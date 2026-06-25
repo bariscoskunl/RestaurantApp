@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -11,6 +11,8 @@ namespace RestaurantApp.Common.Models
         public int Id { get; set; }
         public string Name { get; set; }
         public bool IsInStock { get; set; }
+        public bool IsMenuCategory { get; set; }
+        public int SortOrder { get; set; }
 
         public ICollection<Product> Products { get; set; }
 

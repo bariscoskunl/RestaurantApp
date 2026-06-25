@@ -231,13 +231,80 @@ namespace RestaurantApp.Data.Migrations
                     b.Property<bool>("IsInStock")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsMenuCategory")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
 
                     b.ToTable("Categories");
+                });
+
+            modelBuilder.Entity("RestaurantApp.Common.Models.Order", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TableId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("WaiterId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TableId");
+
+                    b.HasIndex("WaiterId");
+
+                    b.ToTable("Orders");
+                });
+
+            modelBuilder.Entity("RestaurantApp.Common.Models.OrderItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("OrderId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ProductId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderId");
+
+                    b.HasIndex("ProductId");
+
+                    b.ToTable("OrderItems");
                 });
 
             modelBuilder.Entity("RestaurantApp.Common.Models.Product", b =>
@@ -255,6 +322,9 @@ namespace RestaurantApp.Data.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("ImageUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Ingredients")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("IsAvailable")
@@ -284,6 +354,9 @@ namespace RestaurantApp.Data.Migrations
 
                     b.Property<DateTime>("SaleDate")
                         .HasColumnType("datetime2");
+
+                    b.Property<int?>("TableNumber")
+                        .HasColumnType("int");
 
                     b.Property<decimal>("TotalPrice")
                         .HasColumnType("decimal(18,2)");
@@ -323,7 +396,27 @@ namespace RestaurantApp.Data.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("SalesProducts");
+                    b.ToTable("SaleProducts");
+                });
+
+            modelBuilder.Entity("RestaurantApp.Common.Models.Table", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<string>("TableNumber")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Tables");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -377,6 +470,42 @@ namespace RestaurantApp.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("RestaurantApp.Common.Models.Order", b =>
+                {
+                    b.HasOne("RestaurantApp.Common.Models.Table", "Table")
+                        .WithMany("Orders")
+                        .HasForeignKey("TableId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RestaurantApp.Common.Models.ApplicationUser", "Waiter")
+                        .WithMany()
+                        .HasForeignKey("WaiterId");
+
+                    b.Navigation("Table");
+
+                    b.Navigation("Waiter");
+                });
+
+            modelBuilder.Entity("RestaurantApp.Common.Models.OrderItem", b =>
+                {
+                    b.HasOne("RestaurantApp.Common.Models.Order", "Order")
+                        .WithMany("OrderItems")
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RestaurantApp.Common.Models.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Order");
+
+                    b.Navigation("Product");
+                });
+
             modelBuilder.Entity("RestaurantApp.Common.Models.Product", b =>
                 {
                     b.HasOne("RestaurantApp.Common.Models.Category", "Category")
@@ -423,9 +552,19 @@ namespace RestaurantApp.Data.Migrations
                     b.Navigation("Products");
                 });
 
+            modelBuilder.Entity("RestaurantApp.Common.Models.Order", b =>
+                {
+                    b.Navigation("OrderItems");
+                });
+
             modelBuilder.Entity("RestaurantApp.Common.Models.Sale", b =>
                 {
                     b.Navigation("SaleProducts");
+                });
+
+            modelBuilder.Entity("RestaurantApp.Common.Models.Table", b =>
+                {
+                    b.Navigation("Orders");
                 });
 #pragma warning restore 612, 618
         }

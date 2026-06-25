@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using RestaurantApp.Common.Models;
@@ -32,9 +32,9 @@ namespace RestaurantApp.Web.Controllers
             {
                 await _roleManager.CreateAsync(new IdentityRole("User"));
             }
-            if (ModelState.IsValid)
+            if (!ModelState.IsValid)
             {
-                return BadRequest(ModelState);
+                return View(model);
             }
             if (await _userManager.FindByEmailAsync(model.Email) == null)
             {
@@ -61,7 +61,8 @@ namespace RestaurantApp.Web.Controllers
             }
             else
             {
-                ModelState.AddModelError(string.Empty, "Bu email zaten kayıtlı."); // Email zaten kayıtlıysa hata mesajı ekliyoruz
+                // Eğer e-posta zaten kullanımadaysa hatayı ekrana bas
+                ModelState.AddModelError("Email", "Bu e-posta adresi zaten kullanımda. Lütfen başka bir e-posta adresi deneyin veya giriş yapın.");
             }
 
             return View(model);
@@ -77,7 +78,7 @@ namespace RestaurantApp.Web.Controllers
         {
             if (ModelState.IsValid)
             {
-                var user = _userManager.FindByEmailAsync(model.Email).Result; // Email'e göre kullanıcıyı buluyoruz
+                var user = await _userManager.FindByEmailAsync(model.Email); // Email'e göre kullanıcıyı buluyoruz
                 if (user != null)
                 {
                     var result = await _signInManager.PasswordSignInAsync(user.UserName, model.Password, model.RememberMe, lockoutOnFailure: false); // Şifre doğrulaması yapıyoruz  //lockoutOnFailure: false => başarısız giriş denemelerinde hesabın kilitlenmemesi için
@@ -88,10 +89,7 @@ namespace RestaurantApp.Web.Controllers
                         {
                             return RedirectToAction("Index", "Admin", new { area = "Admin" });
                         }
-                    }
-                    else
-                    {
-                        return RedirectToAction("Index", "Home");
+                        return RedirectToAction("Index", "Home"); // User rolündeki kullanıcıları ana sayfaya yönlendiriyoruz
                     }
                 }
             }

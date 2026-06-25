@@ -1,4 +1,4 @@
-﻿using iTextSharp.text;
+using iTextSharp.text;
 using iTextSharp.text.pdf;
 using Microsoft.AspNetCore.Mvc;
 using OfficeOpenXml;
@@ -136,7 +136,7 @@ namespace RestaurantApp.Web.Areas.Admin.Controllers
 
             if (sales == null || !sales.Any())
             {
-                TempData["ErrorMessage"] = "No sales data available for the selected period.";
+                TempData["ErrorMessage"] = "Seçilen tarih aralığı için satış verisi bulunamadı.";
                 return RedirectToAction("DailyReport", new { area = "Admin" });
             }
 
@@ -225,7 +225,7 @@ namespace RestaurantApp.Web.Areas.Admin.Controllers
             }
             catch (Exception ex)
             {
-                TempData["ErrorMessage"] = $"An error occurred while generating the PDF report: {ex.Message}";
+                TempData["ErrorMessage"] = $"PDF raporu oluşturulurken bir hata meydana geldi: {ex.Message}";
                 System.Diagnostics.Debug.WriteLine($"PDF Generation Error: {ex}");
                 return RedirectToAction("DailyReport", new { area = "Admin" });
             }

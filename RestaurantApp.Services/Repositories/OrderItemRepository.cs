@@ -1,0 +1,45 @@
+﻿using Microsoft.EntityFrameworkCore;
+using RestaurantApp.Common.Models;
+using RestaurantApp.Data;
+using RestaurantApp.Services.Interfaces;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace RestaurantApp.Services.Repositories
+{
+    public class OrderItemRepository : IOrderItemRepository
+    {
+        private readonly ApplicationDbContext _context;
+
+        public OrderItemRepository(ApplicationDbContext context)
+        {
+            _context = context;
+        }
+        public async Task<IEnumerable<OrderItem>> GetItemsByOrderIdAsync(int orderId)
+        {
+            return await _context.OrderItems
+                .Where(oi => oi.OrderId == orderId)
+                .Include(oi => oi.Product)
+                .ToListAsync();
+
+        }
+        public async Task AddItemToOrderAsync(OrderItem orderItem)
+        {
+            _context.OrderItems.Add(orderItem);
+            await _context.SaveChangesAsync();
+
+        }
+        public async Task RemoveItemFromOrderAsync(int orderItemId)
+        {
+            var item = await _context.OrderItems.FindAsync(orderItemId);
+            if(item != null)
+            {
+                _context.OrderItems.Remove(item);
+                await _context.SaveChangesAsync();
+            }
+        }
+    }
+}

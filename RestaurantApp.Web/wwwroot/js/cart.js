@@ -1,8 +1,13 @@
-﻿function toggleCart() {
+function toggleCart() {
     const cartSidebar = document.getElementById('cart-sidebar');
     const cartOverlay = document.getElementById('cart-overlay');
     cartSidebar.classList.toggle('active');
     cartOverlay.classList.toggle('active');
+
+    // Sepet açıldığında masa numarasını localStorage'dan doldur
+    if (cartSidebar.classList.contains('active')) {
+        loadTableNumber();
+    }
 }
 
 //sepete ürün eklemek sepette listelemek için kullandığımız script
@@ -72,12 +77,101 @@ function increaseQuantity(productId) {
 
 async function getData() {
     const response = await fetch('/userinfo');
-    const data = await response.json(); // Veriyi JSON formatına çeviriyor
-    return data; // JSON verisini döndürüyor
+    const data = await response.json();
+    return data;
 }
 
+// ============================================
+// Masa Numarası Yönetimi
+// ============================================
+function getTableNumber() {
+    var input = document.getElementById('table-number-input');
+    return input ? parseInt(input.value) : null;
+}
+
+function saveTableNumber(tableNum) {
+    localStorage.setItem('tableNumber', tableNum);
+}
+
+function loadTableNumber() {
+    var input = document.getElementById('table-number-input');
+    if (input) {
+        var saved = localStorage.getItem('tableNumber');
+        if (saved) {
+            input.value = saved;
+        }
+    }
+}
+
+function validateTableNumber() {
+    var input = document.getElementById('table-number-input');
+    var errorSpan = document.getElementById('table-number-error');
+    var tableNum = getTableNumber();
+
+    if (!tableNum || isNaN(tableNum) || tableNum < 1) {
+        // Hata göster
+        if (input) {
+            input.classList.add('input-error');
+        }
+        if (errorSpan) {
+            errorSpan.style.display = 'block';
+        }
+        // Focus'u input'a ver
+        if (input) {
+            input.focus();
+        }
+        return false;
+    }
+
+    // Hata yoksa temizle
+    if (input) {
+        input.classList.remove('input-error');
+    }
+    if (errorSpan) {
+        errorSpan.style.display = 'none';
+    }
+    return true;
+}
+
+// Input değiştiğinde hata stilini temizle ve localStorage'a kaydet
+document.addEventListener('DOMContentLoaded', function () {
+    var tableInput = document.getElementById('table-number-input');
+    if (tableInput) {
+        tableInput.addEventListener('input', function () {
+            this.classList.remove('input-error');
+            var errorSpan = document.getElementById('table-number-error');
+            if (errorSpan) {
+                errorSpan.style.display = 'none';
+            }
+            // Değeri localStorage'a kaydet
+            if (this.value && parseInt(this.value) > 0) {
+                saveTableNumber(this.value);
+            }
+        });
+
+        // Sayfa yüklendiğinde masa numarasını doldur
+        loadTableNumber();
+    }
+});
+
+// ============================================
+// Sipariş Kaydetme
+// ============================================
 async function saveCart() {
     const cart = getCart();
+
+    if (cart.length === 0) {
+        alert('Sepetiniz boş!');
+        return;
+    }
+
+    // Masa numarası kontrolü - zorunlu
+    if (!validateTableNumber()) {
+        return;
+    }
+
+    var tableNumber = getTableNumber();
+    saveTableNumber(tableNumber); // localStorage'a kaydet
 
     var userInfo = await getData();
 
@@ -86,12 +180,18 @@ async function saveCart() {
         return;
     }
 
+    // Sipariş verisini masa numarasıyla birlikte gönder
+    var orderData = {
+        cart: cart,
+        tableNumber: tableNumber
+    };
+
     fetch(`SaveOrder/${userInfo.id}`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify(cart)
+        body: JSON.stringify(orderData)
     })
         .then(response => {
             if (!response.ok) {
@@ -104,16 +204,17 @@ async function saveCart() {
         })
         .then(data => {
             if (data.success) {
-                alert('Order saved successfully');
+                alert('Sipariş başarıyla kaydedildi! Masa: ' + tableNumber);
                 toggleCart();
-                updateCartCount();
-                localStorage.removeItem('cart'); // localStorage'dan sepeti temizle
-                renderCart(); // sepeti yeniden çiz
+                localStorage.removeItem('cart'); // Önce sepeti temizle
+                updateCartCount(); // Sonra sayacı güncelle (0 olacak)
+                renderCart(); // Sepet listesini boşalt
+                // Masa numarası localStorage'da kalır, sonraki siparişte dolu olur
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Error saving order: ' + error.message);
+            alert('Sipariş kaydedilirken hata oluştu: ' + error.message);
         });
 }
 
@@ -128,14 +229,17 @@ function setCart(cart) {
 function updateCartCount() {
     const cart = getCart();
     const cartCount = cart.reduce((total, product) => total + product.quantity, 0);
-    document.getElementById('cart-count').innerText = cartCount;
+    var badges = document.querySelectorAll('.cart-count-badge');
+    badges.forEach(el => el.innerText = cartCount);
 }
 
 function renderCart() {
     const cartItemsElement = document.getElementById('cart-items');
-    const cartCountElement = document.getElementById('cart-count');
     const cartTotalElement = document.getElementById('cart-total');
     const cart = getCart();
+
+    if (!cartItemsElement) return;
+
     cartItemsElement.innerHTML = '';
 
     let totalAmount = 0;
@@ -145,7 +249,7 @@ function renderCart() {
         itemElement.className = 'list-group-item d-flex justify-content-between align-items-center';
         itemElement.dataset.productId = product.productId;
         itemElement.innerHTML = `
-            <span>${product.name} - ${parseFloat(product.price).toFixed(2)}€ x ${product.quantity}</span>
+            <span>${product.name} - ${parseFloat(product.price).toFixed(2)}₺ x ${product.quantity}</span>
             <div>
                 <button class="btn btn-sm btn-danger" onclick="removeFromCart(${product.productId})">-</button>
                 <button class="btn btn-sm btn-success" onclick="increaseQuantity(${product.productId})">+</button>
@@ -155,8 +259,9 @@ function renderCart() {
         totalAmount += parseFloat(product.totalPrice);
     });
 
-    cartCountElement.innerText = cart.reduce((total, product) => total + product.quantity, 0);
-    cartTotalElement.innerText = `Toplam: ${totalAmount.toFixed(2)} €`;
+    if (cartTotalElement) {
+        cartTotalElement.innerText = `Toplam: ${totalAmount.toFixed(2)} ₺`;
+    }
 }
 
 document.querySelectorAll('.add-to-cart').forEach(button => {
@@ -168,15 +273,26 @@ document.querySelectorAll('.add-to-cart').forEach(button => {
     });
 });
 
-document.getElementById('cart-btn').addEventListener('click', () => {
-    document.getElementById('cart-sidebar').classList.toggle('active');
-    document.getElementById('cart-overlay').classList.toggle('active');
-    renderCart();
-});
+var cartBtn = document.getElementById('cart-btn');
+if (cartBtn) {
+    cartBtn.addEventListener('click', () => {
+        document.getElementById('cart-sidebar').classList.toggle('active');
+        document.getElementById('cart-overlay').classList.toggle('active');
+        renderCart();
+    });
+}
 
-document.querySelector('.close-cart').addEventListener('click', () => {
-    document.getElementById('cart-sidebar').classList.remove('active');
-    document.getElementById('cart-overlay').classList.remove('active');
-});
+var closeCartBtn = document.querySelector('.close-cart');
+if (closeCartBtn) {
+    closeCartBtn.addEventListener('click', () => {
+        document.getElementById('cart-sidebar').classList.remove('active');
+        document.getElementById('cart-overlay').classList.remove('active');
+    });
+}
 
-window.addEventListener('load', updateCartCount);
+window.addEventListener('load', function () {
+    var cartCountEl = document.getElementById('cart-count');
+    if (cartCountEl) {
+        updateCartCount();
+    }
+});

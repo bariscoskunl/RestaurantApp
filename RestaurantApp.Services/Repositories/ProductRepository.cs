@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using RestaurantApp.Common.Models;
 using RestaurantApp.Data;
 using RestaurantApp.Services.Interfaces;
@@ -48,6 +48,11 @@ namespace RestaurantApp.Services.Repositories
             var product = await _context.Products.FindAsync(id);
             _context.Products.Remove(product);
             await _context.SaveChangesAsync();
-        } 
+        }
+
+        public void DetachProduct(Product product)
+        {
+            _context.Entry(product).State = EntityState.Detached;
+        }
     }
 }

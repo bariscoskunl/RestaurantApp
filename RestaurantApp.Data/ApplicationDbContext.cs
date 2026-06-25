@@ -20,6 +20,9 @@ namespace RestaurantApp.Data
         public DbSet<Category> Categories { get; set; }
         public DbSet<Sale> Sales { get; set; }
         public DbSet<SaleProducts> SaleProducts { get; set; }
+        public DbSet<Table> Tables { get; set; }
+        public DbSet<Order> Orders { get; set; }
+        public DbSet<OrderItem> OrderItems { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -65,8 +68,24 @@ namespace RestaurantApp.Data
                 .WithMany(c => c.Products)
                 .HasForeignKey(p => p.CategoryId);
 
+            modelBuilder.Entity<Order>()
+                .HasOne(o => o.Table)
+                .WithMany(t => t.Orders)
+                .HasForeignKey(o => o.TableId);
 
+            modelBuilder.Entity<OrderItem>()
+                .HasOne(oi => oi.Order)
+                .WithMany(oi => oi.OrderItems)
+                .HasForeignKey(oi => oi.OrderId);
+
+            modelBuilder.Entity<Order>()
+                .HasOne(o => o.Waiter)
+                .WithMany()
+                .HasForeignKey(o => o.WaiterId);
+
+            modelBuilder.Entity<OrderItem>()
+            .Property(oi => oi.UnitPrice)
+            .HasColumnType("decimal(18,2)");
         }
-
     }
 }

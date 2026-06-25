@@ -1,4 +1,4 @@
-﻿let ordersData = []; // Global değişken olarak tanımla
+let ordersData = []; // Global değişken olarak tanımla
 let currentOrderId = null; // Düzenlenen siparişin ID'sini tutacak değişken
 
 async function getData() {
@@ -31,30 +31,30 @@ async function toggleOrders() {
                     orderElement.className = 'list-group-item';
                     orderElement.innerHTML = `
                                                         <div>
-                                                            <h5>Order ID: ${order.id}</h5>
-                                                            <p>Date: ${new Date(order.saleDate).toLocaleString()}</p>
-                                                            <p>Total Price: ${order.totalPrice.toFixed(2)} €</p>
+                                                            <h5>Masa No: ${order.tableNumber}</h5>
+                                                            <p>Tarih: ${new Date(order.saleDate).toLocaleString()}</p>
+                                                            <p>Toplam Tutar: ${order.totalPrice.toFixed(2)} ₺</p>
                                                             <table class="table table-bordered">
                                                                 <thead>
                                                                     <tr>
-                                                                        <th>Product Name</th>
-                                                                        <th>Product Price</th>
-                                                                        <th>Quantity</th>
-                                                                        <th>Total Price</th>
+                                                                        <th>Ürün Adı</th>
+                                                                        <th>Ürün Fiyatı</th>
+                                                                        <th>Adet</th>
+                                                                        <th>Toplam Tutar</th>
                                                                     </tr>
                                                                 </thead>
                                                                 <tbody>
                                                                     ${order.products.map(p => `
                                                                         <tr>
                                                                             <td>${p.name}</td>
-                                                                            <td>${p.productPrice.toFixed(2)} €</td>
+                                                                            <td>${p.productPrice.toFixed(2)} ₺</td>
                                                                             <td>${p.quantity}</td>
-                                                                            <td>${p.productTotalPrice.toFixed(2)} €</td>
+                                                                            <td>${p.productTotalPrice.toFixed(2)} ₺</td>
                                                                         </tr>
                                                                     `).join('')}
                                                                 </tbody>
                                                             </table>
-                                                            ${userInfo.email == 'admin@domain.com' ? `<button id="editButton" class="btn btn-sm btn-warning" onclick="openEditModal(${order.id})">Edit</button>` : ''}
+                                                            ${userInfo.email == 'admin@domain.com' ? `<button id="editButton" class="btn btn-sm btn-warning" onclick="openEditModal(${order.id})">Düzenle</button>` : ''}
 
 
                                                            

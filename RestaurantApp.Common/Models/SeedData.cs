@@ -18,22 +18,19 @@ namespace RestaurantApp.Common.Models
 
             var roleManager = serviceProvider.GetRequiredService<RoleManager<IdentityRole>>();
 
-            if (!await roleManager.RoleExistsAsync("Admin"))
-            {
-                await roleManager.CreateAsync(new IdentityRole("Admin"));
-            }
+            string[] roleNames = { "Admin", "User", "Garson" };
 
-            if (!await roleManager.RoleExistsAsync("User"))
+            foreach (var roleName in roleNames)
             {
-                await roleManager.CreateAsync(new IdentityRole("User"));
+                if (!await roleManager.RoleExistsAsync(roleName))
+                {
+                    await roleManager.CreateAsync(new IdentityRole(roleName));
+                }
             }
 
 
             // Admin Kullanıcısı
-
-            string adminEmail = "admin@domain.com";
-            string adminPassword = "Admin123!";
-
+            string adminEmail = "admin@domain.com";   
             if (await userManager.FindByEmailAsync(adminEmail) == null)
             {
                 var adminUser = new ApplicationUser
@@ -43,20 +40,16 @@ namespace RestaurantApp.Common.Models
                     EmailConfirmed = true
                 };
 
-                var result = await userManager.CreateAsync(adminUser, adminPassword);
+                var result = await userManager.CreateAsync(adminUser, "Admin123!");
 
                 if (result.Succeeded)
                 {
                     await userManager.AddToRoleAsync(adminUser, "Admin");
                 }
-
             }
 
             // User Kullanıcısı
-
             string userEmail = "user@domain.com";
-            string userPassword = "User123!";
-
             if (await userManager.FindByEmailAsync(userEmail) == null)
             {
                 var normalUser = new ApplicationUser
@@ -66,13 +59,31 @@ namespace RestaurantApp.Common.Models
                     EmailConfirmed = true
                 };
 
-                var result = await userManager.CreateAsync(normalUser, userPassword);
+                var result = await userManager.CreateAsync(normalUser, "User123!");
 
                 if (result.Succeeded)
                 {
                     await userManager.AddToRoleAsync(normalUser, "User");
                 }
+            }
 
+            // Garson Kullanıcısı
+            string garsonEmail = "garson@domain.com";
+            if (await userManager.FindByEmailAsync(garsonEmail) == null)
+            {
+                var garsonUser = new ApplicationUser
+                {
+                    UserName=garsonEmail,
+                    Email=garsonEmail,
+                    EmailConfirmed=true
+                };
+
+                var result = await userManager.CreateAsync(garsonUser, "Garson123!");
+
+                if (result.Succeeded)
+                {
+                    await userManager.AddToRoleAsync(garsonUser, "Garson");
+                }
             }
         }
     }

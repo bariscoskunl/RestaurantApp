@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -11,6 +11,7 @@ namespace RestaurantApp.Common.Models
         public int Id { get; set; }
         public DateTime SaleDate { get; set; }
         public decimal TotalPrice { get; set; }
+        public int? TableNumber { get; set; }
 
         public ICollection<SaleProducts> SaleProducts { get; set; }
 

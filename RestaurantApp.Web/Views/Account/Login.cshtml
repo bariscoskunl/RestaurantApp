@@ -1,115 +1,292 @@
-﻿@model RestaurantApp.Web.Models.LoginViewModel
+@model RestaurantApp.Web.Models.LoginViewModel
 
 @{
     ViewData["Title"] = "Login";
-
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Giriş Yap</title>
-    <link rel="stylesheet" href="~/feane-1.0.0/css/style.css" />
+@section Styles {
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
     <style>
+        .auth-page {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 80vh;
+            padding: 40px 20px;
+        }
 
-            .login-page-container {
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                height: 100vh;
-                background-color: #f8f9fa;
+        .auth-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+            width: 100%;
+            max-width: 420px;
+            padding: 45px 40px;
+            font-family: 'Inter', sans-serif;
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        @@keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
             }
-
-            .login-container {
-                background-color: #fff;
-                padding: 20px;
-                border-radius: 10px;
-                box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-                width: 300px;
+            to {
+                opacity: 1;
+                transform: translateY(0);
             }
+        }
 
-                .login-container h2 {
-                    text-align: center;
-                    margin-bottom: 20px;
-                }
+        .auth-card .auth-icon {
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(135deg, #d32f2f, #b71c1c);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            box-shadow: 0 8px 25px rgba(211, 47, 47, 0.35);
+        }
 
-            .form-group {
-                margin-bottom: 15px;
-            }
+        .auth-card .auth-icon i {
+            font-size: 28px;
+            color: #fff;
+        }
 
-                .form-group label {
-                    display: block;
-                    margin-bottom: 5px;
-                }
+        .auth-card h2 {
+            text-align: center;
+            margin-bottom: 8px;
+            font-weight: 700;
+            font-size: 26px;
+            color: #222831;
+        }
 
-                .form-group input {
-                    width: 100%;
-                    padding: 10px;
-                    border: 1px solid #ccc;
-                    border-radius: 5px;
-                }
+        .auth-card .auth-subtitle {
+            text-align: center;
+            color: #888;
+            font-size: 14px;
+            margin-bottom: 30px;
+        }
 
-                .form-group span {
-                    color: #e74c3c;
-                    font-size: 0.9em;
-                }
+        .auth-card .form-group {
+            margin-bottom: 20px;
+            position: relative;
+        }
 
-            .login-button {
-                width: 100%;
-                padding: 10px;
-                background-color: #ffc107;
-                border: none;
-                border-radius: 5px;
-                color: #fff;
-                font-size: 1em;
-                cursor: pointer;
-            }
+        .auth-card .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 500;
+            font-size: 14px;
+            color: #444;
+        }
 
-                .login-button:hover {
-                    background-color: #e0a800;
-                }
+        .auth-card .form-group input[type="text"],
+        .auth-card .form-group input[type="email"],
+        .auth-card .form-group input[type="password"] {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e8e8e8;
+            border-radius: 10px;
+            font-size: 15px;
+            font-family: 'Inter', sans-serif;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+            outline: none;
+            background: #fafafa;
+            box-sizing: border-box;
+        }
 
-            .form-group input[type="checkbox"] {
-                width: auto;
-            }
+        .auth-card .form-group input:focus {
+            border-color: #d32f2f;
+            box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.15);
+            background: #fff;
+        }
+
+        .auth-card .form-group span.text-danger {
+            color: #e74c3c;
+            font-size: 12px;
+            margin-top: 4px;
+            display: block;
+        }
+
+        .password-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .password-wrapper input {
+            padding-right: 40px !important;
+            width: 100%;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 15px;
+            cursor: pointer;
+            color: #888;
+            transition: color 0.2s;
+        }
+
+        .password-toggle:hover {
+            color: #d32f2f;
+        }
+
+        .auth-card .remember-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 24px;
+        }
+
+        .auth-card .remember-row input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #d32f2f;
+            cursor: pointer;
+        }
+
+        .auth-card .remember-row label {
+            font-size: 14px;
+            color: #555;
+            cursor: pointer;
+            margin: 0;
+        }
+
+        .auth-card .auth-btn {
+            width: 100%;
+            padding: 13px;
+            background: linear-gradient(135deg, #d32f2f, #b71c1c);
+            border: none;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 16px;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 4px 15px rgba(211, 47, 47, 0.3);
+        }
+
+        .auth-card .auth-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(211, 47, 47, 0.4);
+        }
+
+        .auth-card .auth-btn:active {
+            transform: translateY(0);
+        }
+
+        .auth-card .auth-footer {
+            text-align: center;
+            margin-top: 24px;
+            font-size: 14px;
+            color: #888;
+        }
+
+        .auth-card .auth-footer a {
+            color: #d32f2f;
+            font-weight: 600;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .auth-card .auth-footer a:hover {
+            color: #b71c1c;
+        }
+
+        .auth-card .validation-summary-errors ul {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 20px 0;
+        }
+
+        .auth-card .validation-summary-errors ul li {
+            background: #fef2f2;
+            color: #dc2626;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            border-left: 3px solid #dc2626;
+        }
+
+        .auth-card .divider {
+            display: flex;
+            align-items: center;
+            margin: 20px 0;
+            color: #ccc;
+            font-size: 13px;
+        }
+
+        .auth-card .divider::before,
+        .auth-card .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #e8e8e8;
+        }
+
+        .auth-card .divider::before { margin-right: 12px; }
+        .auth-card .divider::after { margin-left: 12px; }
     </style>
-</head>
-<body>
-    <div class="login-page-container">
-        <div class="login-container">
-            <h2>Welcome</h2>
-            <form asp-controller="Account" asp-action="Login" method="post">
-                <div class="form-group">
-                    <label asp-for="Email"></label>
-                    <input asp-for="Email" />
-                    <span asp-validation-for="Email" class="text-danger"></span>
-                </div>
-                <div class="form-group">
-                    <label asp-for="Password"></label>
-                    <input asp-for="Password" type="password" />
-                    <span asp-validation-for="Password" class="text-danger"></span>
-                </div>
-                <div class="form-group">
-                    <label asp-for="RememberMe">Remember me</label>
-                    <input asp-for="RememberMe" type="checkbox" />
-                </div>
-                <button type="submit" class="login-button">Login </button>
-                <br />
-                <br />
-                <br />
+}
 
-                <a asp-action="Register" class="login-button">Register</a>
-            </form>
-            @section Scripts {
-                <partial name="_ValidationScriptsPartial" />
-            }
+<div class="auth-page">
+    <div class="auth-card">
+        <div class="auth-icon">
+            <i class="fa fa-user"></i>
+        </div>
+        <h2>Tekrar Hoş Geldiniz</h2>
+        <p class="auth-subtitle">Lezzet Evi'ne devam etmek için giriş yapın</p>
+
+        @Html.ValidationSummary(false, "", new { @class = "text-danger" })
+
+        <form asp-controller="Account" asp-action="Login" method="post">
+            <div class="form-group">
+                <label asp-for="Email">E-Posta</label>
+                <input asp-for="Email" placeholder="ornek@mail.com" />
+                <span asp-validation-for="Email" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Password">Parola</label>
+                <div class="password-wrapper">
+                    <input asp-for="Password" type="password" placeholder="••••••••" />
+                    <i class="fa fa-eye password-toggle"></i>
+                </div>
+                <span asp-validation-for="Password" class="text-danger"></span>
+            </div>
+            <div class="remember-row">
+                <input asp-for="RememberMe" type="checkbox" id="rememberMe" />
+                <label for="rememberMe">Beni Hatırla</label>
+            </div>
+            <button type="submit" class="auth-btn">Giriş Yap</button>
+        </form>
+
+        <div class="auth-footer">
+            Hesabınız yok mu? <a asp-controller="Account" asp-action="Register">Kayıt Ol</a>
         </div>
     </div>
-</body>
-</html>
+</div>
 
-
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.querySelectorAll('.password-toggle').forEach(icon => {
+            icon.addEventListener('click', function() {
+                const input = this.previousElementSibling;
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    this.classList.remove('fa-eye');
+                    this.classList.add('fa-eye-slash');
+                } else {
+                    input.type = 'password';
+                    this.classList.remove('fa-eye-slash');
+                    this.classList.add('fa-eye');
+                }
+            });
+        });
+    </script>
+}

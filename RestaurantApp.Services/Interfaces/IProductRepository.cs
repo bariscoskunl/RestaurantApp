@@ -1,4 +1,4 @@
-﻿using RestaurantApp.Common.Models;
+using RestaurantApp.Common.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,5 +15,6 @@ namespace RestaurantApp.Services.Interfaces
         Task AddProductAsync(Product product);
         Task UpdateProductAsync(Product product);
         Task DeleteProductAsync(int id);
+        void DetachProduct(Product product);
     }
 }

@@ -117,19 +117,28 @@ namespace RestaurantApp.Web.Controllers
 
         [Authorize]
         [HttpPost("SaveOrder/{userId}")]
-        public async Task<IActionResult> SaveOrder([FromBody] List<SaleProducts> cart, [FromRoute] string userId)
+        public async Task<IActionResult> SaveOrder([FromBody] OrderRequest orderRequest, [FromRoute] string userId)
         {
             try
             {
+                var cart = orderRequest.Cart;
+                var tableNumber = orderRequest.TableNumber;
+
                 if (cart == null || cart.Count == 0)
                 {
                     return BadRequest(new { message = "Cart is empty" });
                 }
 
+                if (tableNumber == null || tableNumber < 1)
+                {
+                    return BadRequest(new { message = "Table number is required" });
+                }
+
                 var sale = new Sale
                 {
                     SaleDate = DateTime.Now,
-                    TotalPrice = 0
+                    TotalPrice = 0,
+                    TableNumber = tableNumber
                 };
 
                 await _saleRepository.AddSaleAsync(sale);
@@ -174,6 +183,7 @@ namespace RestaurantApp.Web.Controllers
                 s.Id,
                 s.SaleDate,
                 s.TotalPrice,
+                s.TableNumber,
                 Products = s.SaleProducts.Select(sp => new
                 {
                     sp.ProductId,
@@ -198,6 +208,7 @@ namespace RestaurantApp.Web.Controllers
                 s.Id,
                 s.SaleDate,
                 s.TotalPrice,
+                s.TableNumber,
                 Products = s.SaleProducts.Select(sp => new
                 {
                     sp.ProductId,

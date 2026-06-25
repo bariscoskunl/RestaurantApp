@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
+using RestaurantApp.Web.Localization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using OfficeOpenXml;
@@ -24,6 +25,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>()
+    .AddErrorDescriber<CustomIdentityErrorDescriber>()
     .AddDefaultTokenProviders();
 
 
@@ -56,6 +58,10 @@ builder.Services.AddSession(options =>
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 builder.Services.AddScoped<ISaleRepository, SaleRepository>();
+builder.Services.AddScoped<ITableRepository, TableRepository>();
+builder.Services.AddScoped<IOrderRepository, OrderRepository>();
+builder.Services.AddScoped<IOrderItemRepository, OrderItemRepository>();
+
 
 
 var app = builder.Build();
@@ -104,5 +110,12 @@ app.MapControllerRoute(
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
+
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+    await RestaurantApp.Common.Models.SeedData.Initialize(services, userManager);
+}
 
 app.Run();

@@ -1,0 +1,47 @@
+            <!-- Sepet Sidebar -->
+            <div id="cart-sidebar" class="cart-sidebar">
+                <div class="cart-header">
+                    <button type="button" class="close" onclick="toggleCart()">&times;</button>
+                    <h4>My Cart</h4>
+                </div>
+                <div class="cart-body">
+                    <ul id="cart-items" class="list-group">
+                        <!-- Ürünler burada listelenecek -->
+                    </ul>
+                </div>
+                <div id="cart-total" class="cart-total">
+                    <!-- Toplam fiyat burada görünecek -->
+                </div>
+                <div class="cart-table-number">
+                    <label for="table-number-input"><i class="fa fa-cutlery"></i> Masa Numarası</label>
+                    <input type="number" id="table-number-input" class="form-control" placeholder="Enter table number..." min="1" />
+                    <span id="table-number-error" class="table-number-error" style="display:none;">Please enter a table number to place your order.</span>
+                </div>
+                <div id="total-price" class="cart-footer">
+                    <button class="btn btn-primary btn-block" onclick="saveCart()">Save Order</button>
+                </div>
+            </div>
+            <div id="cart-overlay" class="cart-overlay" onclick="toggleCart()"></div>
+
+            <!-- Floating Action Button (FAB) for Cart -->
+            @if (User?.Identity?.IsAuthenticated is true && User.IsInRole("User"))
+            {
+                <button class="fab-cart" onclick="toggleCart()">
+                    <i class="fa fa-shopping-cart"></i>
+                    <span class="badge cart-count-badge">0</span>
+                </button>
+            }
+
+            <!-- Orders Sidebar -->
+            <div id="orders-sidebar" class="orders-sidebar">
+                <div class="cart-header">
+                    <button type="button" class="close" onclick="toggleOrders()">&times;</button>
+                    <h4>Today's Orders</h4>
+                </div>
+                <div class="">
+                    <ul id="orders-items" class="list-group">
+                        <!-- Orders burada listelenecek -->
+                    </ul>
+                </div>
+            </div>
+            <div id="orders-overlay" class="orders-overlay" onclick="toggleOrders()"></div>

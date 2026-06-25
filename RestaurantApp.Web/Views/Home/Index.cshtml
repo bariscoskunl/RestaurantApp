@@ -1,82 +1,291 @@
-﻿@model HomeViewModel
+@model HomeViewModel
 
 @{
     ViewBag.Title = "Menu";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
-<section class="food_section layout_padding">
+
+<section class="modern-menu-section">
     <div class="container">
-        <div class="heading_container heading_center">
-            <h2>Our Menu</h2>
+        
+        <!-- Ürün Tipi Seçici -->
+        <div class="menu-type-toggle text-center mb-4 mt-3">
+            <div class="btn-group shadow-sm" role="group" aria-label="Menu Type">
+                <input type="radio" class="btn-check" name="menuType" id="btn-menuler" autocomplete="off" checked>
+                <label class="btn btn-outline-danger fw-bold px-4 py-2" for="btn-menuler">Menüler</label>
+
+                <input type="radio" class="btn-check" name="menuType" id="btn-tekil" autocomplete="off">
+                <label class="btn btn-outline-danger fw-bold px-4 py-2" for="btn-tekil">Tekil Ürünler</label>
+            </div>
         </div>
-        <div class="filters-menu">
-            <ul class="filters_menu">
-                <li class="active" data-filter="*">ALL</li>
+
+        <!-- Yatay Kaydırılabilir Kategoriler -->
+        <div class="menu-categories-wrapper">
+            <ul class="menu-categories">
+                <li class="active" data-filter="all">TÜMÜ</li>
                 @foreach (var category in Model.Categories)
                 {
-                    <li data-filter=".@category.Name.Replace(" ", "")">@category.Name</li>
+                    <li data-filter="@category.Name.Replace(" ", "").ToLower()" data-is-menu="@(category.IsMenuCategory ? "true" : "false")">@category.Name</li>
                 }
             </ul>
         </div>
-        <div class="filters-content">
-            <div class="row grid">
-                @foreach (var product in Model.Products)
-                {
-                    <div class="col-sm-6 col-lg-4 all @product.Category.Name.Replace(" ", "")">
-                        <div class="box">
-                            <div class="img-box">
-                                <img src="~/images/@product.ImageUrl" alt="@product.Name">
-                            </div>
-                            <div class="detail-box">
-                                <h5>@product.Name</h5>
-                                <ul>
-                                    @*Ürünün açıklamalarını satır satır alt alta yazdırabilmek için ayırıyoruz.*@
-                                    @if (product.Description is not null)
-                                    {
-                                        foreach (var item in product.Description.Split('|'))
-                                        {
-                                            <li>@item</li>
-                                        }
-                                    }
 
-                                </ul>
-                                <div class="options">
-                                    <h6>Price: @product.Price €</h6>
+        <!-- Ürün Listesi — Kategoriye göre gruplu -->
+        <div class="menu-items-container">
+            @{
+                var groupedProducts = Model.Products
+                    .Where(p => p.Category != null)
+                    .GroupBy(p => p.Category)
+                    .OrderBy(g => g.Key.SortOrder);
+            }
+
+            @foreach (var group in groupedProducts)
+            {
+                var catFilter = group.Key.Name.Replace(" ", "").ToLower();
+                var isMenuCat = group.Key.IsMenuCategory;
+
+                <!-- Kategori Başlığı -->
+                <div class="category-section-header" data-category-header="@catFilter" data-is-menu-cat="@(isMenuCat ? "true" : "false")">
+                    <h3 class="category-title">@group.Key.Name</h3>
+                </div>
+
+                <!-- Bu kategorideki ürünler -->
+                <div class="category-products-grid" data-category-grid="@catFilter" data-is-menu-cat="@(isMenuCat ? "true" : "false")">
+                    @foreach (var product in group)
+                    {
+                        <div class="menu-item" data-category="@catFilter">
+                            <div class="item-image-wrapper">
+                                <img src="~/images/@product.ImageUrl" alt="@product.Name" class="item-image">
+                            </div>
+                            <div class="item-details">
+                                <div class="item-header">
+                                    <h5 class="item-title">@product.Name</h5>
+                                </div>
+                                <div class="item-desc">
+                                    @if (!string.IsNullOrEmpty(product.Description))
+                                    {
+                                        <p class="desc-text mb-1">@string.Join(", ", product.Description.Split('|'))</p>
+                                    }
+                                    else
+                                    {
+                                        <p class="text-muted desc-text mb-1" style="font-style:italic;">Açıklama bulunmamaktadır</p>
+                                    }
+                                    
+                                    @if (!string.IsNullOrEmpty(product.Ingredients))
+                                    {
+                                        <p class="ingredients-text mb-1">
+                                            <strong>İçindekiler:</strong> @product.Ingredients
+                                        </p>
+                                    }
+                                    <span class="read-more-btn text-primary fw-bold" style="cursor: pointer; font-size: 11px; display: none;">Devamını gör</span>
+                                </div>
+                                <div class="item-actions">
+                                    <span class="item-price">@product.Price ₺</span>
                                     @if (User?.Identity?.IsAuthenticated is true && User.IsInRole("User"))
                                     {
-                                        <button class="btn btn-sm btn-warning" onclick="addToCart(@product.Id, '@product.Name', @product.Price)">
-                                            <i class="fa fa-shopping-cart"></i>
+                                        <button class="btn-add-cart" onclick="addToCart(@product.Id, '@product.Name', @product.Price)">
+                                            <i class="fa fa-plus"></i> Ekle
                                         </button>
                                     }
                                 </div>
                             </div>
                         </div>
-                    </div>
-                }
-            </div>
+                    }
+                </div>
+            }
         </div>
     </div>
 </section>
 
 @section Scripts {
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://unpkg.com/isotope-layout@3.0.6/dist/isotope.pkgd.min.js"></script>
     <script>
-        $(document).ready(function () {
-            var $grid = $('.grid').isotope({
-                itemSelector: '.all',
-                layoutMode: 'fitRows'
+        document.addEventListener('DOMContentLoaded', function () {
+            const typeRadios = document.querySelectorAll('input[name="menuType"]');
+            const categoryBtns = document.querySelectorAll('.menu-categories li');
+            const categoryHeaders = document.querySelectorAll('.category-section-header');
+            const categoryGrids = document.querySelectorAll('.category-products-grid');
+
+            function getCurrentMode() {
+                return document.getElementById('btn-menuler').checked;
+            }
+
+            // Kategori pill'lerini moda göre filtrele
+            function filterCategoryPills(isMenuMode) {
+                categoryBtns.forEach(btn => {
+                    const isAll = btn.getAttribute('data-filter') === 'all';
+                    if (isAll) {
+                        btn.style.display = 'inline-block';
+                        return;
+                    }
+                    const btnIsMenu = btn.getAttribute('data-is-menu') === 'true';
+                    if (btnIsMenu === isMenuMode) {
+                        btn.style.display = 'inline-block';
+                    } else {
+                        btn.style.display = 'none';
+                        btn.classList.remove('active');
+                    }
+                });
+            }
+
+            // Ana filtreleme fonksiyonu
+            function applyFilter(filter) {
+                const isMenuMode = getCurrentMode();
+
+                categoryHeaders.forEach(header => {
+                    const headerCat = header.getAttribute('data-category-header');
+                    const isMenuCat = header.getAttribute('data-is-menu-cat') === 'true';
+
+                    if (filter === 'all') {
+                        // TÜMÜ: Sadece doğru moddaki kategorileri göster (başlıklı)
+                        if (isMenuCat === isMenuMode) {
+                            header.style.display = 'block';
+                        } else {
+                            header.style.display = 'none';
+                        }
+                    } else {
+                        // Tek kategori seçili: başlıkları gizle
+                        header.style.display = 'none';
+                    }
+                });
+
+                categoryGrids.forEach(grid => {
+                    const gridCat = grid.getAttribute('data-category-grid');
+                    const isMenuCat = grid.getAttribute('data-is-menu-cat') === 'true';
+
+                    if (filter === 'all') {
+                        // TÜMÜ: doğru moddaki grid'leri göster
+                        if (isMenuCat === isMenuMode) {
+                            grid.style.display = 'grid';
+                        } else {
+                            grid.style.display = 'none';
+                        }
+                    } else if (gridCat === filter) {
+                        grid.style.display = 'grid';
+                    } else {
+                        grid.style.display = 'none';
+                    }
+                });
+
+                // Ürün animasyonları
+                const menuItems = document.querySelectorAll('.menu-item');
+                menuItems.forEach(item => {
+                    const parentGrid = item.closest('.category-products-grid');
+                    if (parentGrid && parentGrid.style.display !== 'none') {
+                        item.style.display = 'flex';
+                        setTimeout(() => { item.style.opacity = '1'; }, 50);
+                    } else {
+                        item.style.opacity = '0';
+                        setTimeout(() => { item.style.display = 'none'; }, 200);
+                    }
+                });
+            }
+
+            // Mod değişikliği (Tekil / Menüler)
+            typeRadios.forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    const isMenuMode = e.target.id === 'btn-menuler';
+                    filterCategoryPills(isMenuMode);
+
+                    // TÜMÜ'yü aktif yap ve filtrele
+                    categoryBtns.forEach(b => b.classList.remove('active'));
+                    const allBtn = document.querySelector('.menu-categories li[data-filter="all"]');
+                    if (allBtn) {
+                        allBtn.classList.add('active');
+                    }
+                    applyFilter('all');
+                });
             });
 
-            $('.filters_menu li').click(function () {
-                var filterValue = $(this).attr('data-filter');
-                $grid.isotope({ filter: filterValue });
-                $('.filters_menu li').removeClass('active');
-                $(this).addClass('active');
+            // Kategori pill'ine tıklama
+            categoryBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    categoryBtns.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    const filter = btn.getAttribute('data-filter');
+                    applyFilter(filter);
+                });
             });
+
+            // Başlangıç durumu
+            filterCategoryPills(true);
+            applyFilter('all');
+
+            // "Devamını gör" mantığını bir fonksiyona alıyoruz ki fontlar yüklendikten sonra doğru çalışsın
+            function checkReadMore() {
+                document.querySelectorAll('.item-desc').forEach(descContainer => {
+                    const descText = descContainer.querySelector('.desc-text, .desc-text.expanded');
+                    const ingrText = descContainer.querySelector('.ingredients-text, .ingredients-text.expanded');
+                    const readMoreBtn = descContainer.querySelector('.read-more-btn');
+
+                    if (!readMoreBtn) return;
+
+                    let isOverflowing = false;
+                    
+                    // Gerçek taşmayı, kısıtlanmış boy ile genişletilmiş boyu karşılaştırarak buluyoruz
+                    // Bu yöntem mobil/masaüstü ve farklı tarayıcılarda %100 kesin çalışır.
+                    
+                    if (descText) {
+                        const wasExpanded = descText.classList.contains('expanded');
+                        descText.classList.remove('expanded');
+                        const collapsedHeight = descText.clientHeight;
+                        descText.classList.add('expanded');
+                        const fullHeight = descText.clientHeight;
+                        
+                        if (fullHeight > collapsedHeight + 5) {
+                            isOverflowing = true;
+                        }
+                        
+                        if (!wasExpanded) descText.classList.remove('expanded');
+                    }
+
+                    if (ingrText) {
+                        const wasExpanded = ingrText.classList.contains('expanded');
+                        ingrText.classList.remove('expanded');
+                        const collapsedHeight = ingrText.clientHeight;
+                        ingrText.classList.add('expanded');
+                        const fullHeight = ingrText.clientHeight;
+                        
+                        if (fullHeight > collapsedHeight + 5) {
+                            isOverflowing = true;
+                        }
+                        
+                        if (!wasExpanded) ingrText.classList.remove('expanded');
+                    }
+
+                    if (isOverflowing) {
+                        readMoreBtn.style.display = 'inline-block';
+                    } else {
+                        readMoreBtn.style.display = 'none';
+                    }
+                    
+                    // Event listener'ın birden fazla kez eklenmesini önlemek için
+                    if (!readMoreBtn.hasAttribute('data-click-bound')) {
+                        readMoreBtn.setAttribute('data-click-bound', 'true');
+                        readMoreBtn.addEventListener('click', function() {
+                            const isExpanded = this.textContent === 'Daha az göster';
+                            
+                            if (isExpanded) {
+                                this.textContent = 'Devamını gör';
+                                if (descText) descText.classList.remove('expanded');
+                                if (ingrText) ingrText.classList.remove('expanded');
+                            } else {
+                                this.textContent = 'Daha az göster';
+                                if (descText) descText.classList.add('expanded');
+                                if (ingrText) ingrText.classList.add('expanded');
+                            }
+                        });
+                    }
+                });
+            }
+
+            // Sayfa ve fontlar tamamen yüklendiğinde hesapla
+            window.addEventListener('load', checkReadMore);
+            
+            // İlk yüklemede de çalıştır (garanti olsun)
+            setTimeout(checkReadMore, 200);
+
+            // Ekran boyutu değiştiğinde tekrar hesapla
+            window.addEventListener('resize', checkReadMore);
         });
     </script>
 }
-
-
