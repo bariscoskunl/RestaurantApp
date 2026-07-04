@@ -1,0 +1,430 @@
+@model Table
+
+@{
+    var activeOrders = ViewBag.ActiveOrders as List<RestaurantApp.Common.Models.Order> ?? new List<RestaurantApp.Common.Models.Order>();
+    var allItems = activeOrders.SelectMany(o => o.OrderItems).ToList();
+    var orderTotal = allItems.Sum(oi => oi.UnitPrice * oi.Quantity);
+    var earliestOrder = activeOrders.OrderBy(o => o.CreatedAt).FirstOrDefault();
+    var duration = earliestOrder != null ? DateTime.UtcNow - earliestOrder.CreatedAt : TimeSpan.Zero;
+    var durationText = duration.TotalHours >= 1
+        ? $"{(int)duration.TotalHours} saat {duration.Minutes} dakika"
+        : $"{(int)duration.TotalMinutes} dakika";
+
+    var statusText = Model.Status switch
+    {
+        TableStatus.Empty => "Boş",
+        TableStatus.Occupied => "Dolu",
+        TableStatus.WaitingForBill => "Hesap Bekliyor",
+        _ => "Bilinmiyor"
+    };
+    var statusBadgeClass = Model.Status switch
+    {
+        TableStatus.Empty => "bg-success",
+        TableStatus.Occupied => "bg-danger",
+        TableStatus.WaitingForBill => "bg-warning text-dark",
+        _ => "bg-secondary"
+    };    
+    int count = 0;
+}
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Masa @Model.TableNumber - Detay</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="~/css/admin.css" rel="stylesheet">
+    <style>
+        .detail-header {
+            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            color: #fff;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .detail-header .table-number-big {
+            font-size: 2rem;
+            font-weight: 800;
+        }
+        .detail-header .status-badge-lg {
+            font-size: 0.9rem;
+            padding: 0.4rem 1rem;
+            border-radius: 20px;
+        }
+        .detail-header .duration-info {
+            font-size: 0.95rem;
+            opacity: 0.9;
+            margin-top: 0.5rem;
+        }
+
+        /* Sipariş tablosu */
+        .order-table-wrapper {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            padding: 1.25rem;
+            margin-bottom: 1.5rem;
+        }
+        .order-table-wrapper h4 {
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+        .order-table th {
+            font-size: 0.85rem;
+            font-weight: 600;
+            background: #f8f9fa;
+        }
+        .order-table td {
+            vertical-align: middle;
+            font-size: 0.9rem;
+        }
+
+        /* Adet butonları */
+        .qty-controls {
+            display: flex;
+            align-items: center;
+            gap: 0;
+        }
+        .qty-controls .btn-qty {
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            font-size: 1rem;
+            font-weight: 700;
+            line-height: 1;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .qty-controls .qty-value {
+            width: 36px;
+            text-align: center;
+            font-weight: 700;
+            font-size: 1rem;
+        }
+
+        /* Toplam bölümü */
+        .total-section {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .total-section .total-amount {
+            font-size: 2.2rem;
+            font-weight: 800;
+        }
+        .total-section .total-label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        /* Aksiyon butonları */
+        .action-buttons {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+        .action-buttons .btn {
+            border-radius: 10px;
+            font-weight: 600;
+            padding: 0.65rem 1.5rem;
+            font-size: 0.95rem;
+        }
+
+        .btn-close-table {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            border: none;
+            color: #fff;
+            font-size: 1.1rem !important;
+            padding: 0.8rem 2rem !important;
+        }
+        .btn-close-table:hover {
+            background: linear-gradient(135deg, #c0392b 0%, #a93226 100%);
+            color: #fff;
+        }
+
+        .empty-orders {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: #999;
+        }
+        .empty-orders i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        /* Sipariş grubu başlıkları */
+        .order-group-header {
+            background: #e9ecef;
+            padding: 0.5rem 0.75rem;
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            font-size: 0.8rem;
+            color: #555;
+            font-weight: 600;
+        }
+
+
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            @await Component.InvokeAsync("AdminSidebar")
+
+            <!-- Main content -->
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 pt-3">
+
+                <!-- Geri butonu -->
+                <a asp-action="Index" asp-controller="Table" asp-area="Admin" class="btn btn-outline-secondary mb-3">
+                    ← Masalara Dön
+                </a>
+
+                <!-- Masa Başlığı -->
+                <div class="detail-header">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap">
+                        <div>
+                            <div class="table-number-big">🍽 Masa @Model.TableNumber</div>
+                            <span class="badge status-badge-lg @statusBadgeClass">@statusText</span>
+                        </div>
+                        <div class="text-end">
+                            @if (Model.Status != TableStatus.Empty && earliestOrder != null)
+                            {
+                                <div class="duration-info">⏱ Açık: <strong>@durationText</strong></div>
+                            }
+                            <div class="duration-info">Toplam Sipariş: <strong>@activeOrders.Count</strong></div>
+                        </div>
+                    </div>
+
+                    <!-- Durum Değiştirme Butonları (Modern Toggle Görünümü) -->
+                    <div class="mt-4 mb-3 d-flex align-items-center flex-wrap">
+                        <span class="text-muted small fw-bold text-uppercase me-3 mb-2">Masa Durumu:</span>
+                        
+                        <style>
+                            .status-toggle {
+                                background: #f1f3f5;
+                                border-radius: 50px;
+                                padding: 6px;
+                                display: inline-flex;
+                                gap: 4px;
+                            }
+                            .status-toggle .btn {
+                                border-radius: 50px !important;
+                                border: none;
+                                font-weight: 700;
+                                padding: 0.6rem 1.5rem;
+                                transition: all 0.3s ease;
+                                font-size: 0.95rem;
+                            }
+                            /* Seçili Olmayanların Tasarımı */
+                            .status-toggle .btn.inactive {
+                                background: transparent;
+                                color: #868e96;
+                            }
+                            .status-toggle .btn.inactive:hover {
+                                background: #e9ecef;
+                                color: #495057;
+                            }
+                            /* Seçili (Aktif) Olanların Tasarımı */
+                            .status-toggle .btn-empty.active { background: #20c997; color: white; box-shadow: 0 4px 12px rgba(32,201,151,0.4); }
+                            .status-toggle .btn-occupied.active { background: #fa5252; color: white; box-shadow: 0 4px 12px rgba(250,82,82,0.4); }
+                            .status-toggle .btn-waiting.active { background: #fcc419; color: #212529; box-shadow: 0 4px 12px rgba(252,196,25,0.4); }
+                        </style>
+
+                        <form asp-action="UpdateStatus" asp-controller="Table" asp-area="Admin" method="post" class="m-0 mb-2">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@Model.Id" />  
+                                    <div class="status-toggle shadow-sm">
+                                <!-- BOŞ BUTONU -->
+                                <button type="submit" name="status" value="@((int)TableStatus.Empty)" 
+                                        class="btn btn-empty @(Model.Status == TableStatus.Empty ? "active" : "inactive")" 
+                                        @(Model.Status == TableStatus.Empty ? "disabled style=opacity:1;cursor:default;" : "")>
+                                    🍽 Boş
+                                </button>
+
+                                <!-- DOLU BUTONU -->
+                                <button type="submit" name="status" value="@((int)TableStatus.Occupied)" 
+                                        class="btn btn-occupied @(Model.Status == TableStatus.Occupied ? "active" : "inactive")" 
+                                        @(Model.Status == TableStatus.Occupied ? "disabled style=opacity:1;cursor:default;" : "")>
+                                    👥 Dolu
+                                </button>
+
+                                <!-- HESAP İSTENDİ BUTONU -->
+                                <button type="submit" name="status" value="@((int)TableStatus.WaitingForBill)" 
+                                        class="btn btn-waiting @(Model.Status == TableStatus.WaitingForBill ? "active" : "inactive")" 
+                                        @(Model.Status == TableStatus.WaitingForBill ? "disabled style=opacity:1;cursor:default;" : "")>
+                                    💳 Hesap Bekliyor
+                                </button>
+                            </div>                           
+                        </form>
+                    </div>
+                </div>
+
+                @if (allItems.Any())
+                {
+                    <!-- Sipariş Detayları Tablosu -->
+                    @foreach (var order in activeOrders)
+                    {
+                            count++;
+                            var orderStatusText = order.Status switch
+                        {
+                            OrderStatus.Preparing => "🔥 Hazırlanıyor",
+                            OrderStatus.Served => "✅ Servis Edildi",
+                            _ => "⏳ Bekliyor"
+                        };
+                        var orderDuration = DateTime.UtcNow - order.CreatedAt;
+                        var orderDurationText = orderDuration.TotalHours >= 1
+                            ? $"{(int)orderDuration.TotalHours} sa {orderDuration.Minutes} dk önce"
+                            : $"{(int)orderDuration.TotalMinutes} dk önce";
+
+                        <div class="order-table-wrapper">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h4 class="mb-0">Sipariş #@count</h4>
+                                <div>
+                                    <span class="badge bg-secondary">@orderStatusText</span>
+                                    <small class="text-muted ms-2">@orderDurationText</small>
+                                </div>
+                            </div>
+
+                            <div class="table-responsive">
+                                <table class="table order-table mb-0">
+                                    <thead>
+                                        <tr style="background-color: #f8f9fa;">
+                                            <th colspan="5" class="text-left py-2 text-primary" style="font-size: 0.95rem;">
+                                                <i class="fa fa-user-circle"></i> Siparişi Veren:
+                                                @if (order.Waiter != null)
+                                                {
+                                                    var orderRoles = ViewBag.OrderRoles as Dictionary<int, string>;
+                                                    var roleName = orderRoles != null && orderRoles.ContainsKey(order.Id) ? orderRoles[order.Id] : "Müşteri";
+
+                                                    var roleBadgeColor = roleName == "Admin" ? "bg-danger" : (roleName == "Garson" ? "bg-warning text-dark" : "bg-info");
+                                                    <span class="badge @roleBadgeColor ms-1">@roleName</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">Bilinmiyor</span>
+                                                }
+                                            </th>
+                                        </tr>
+                                        <tr>
+                                            <th>Ürün</th>
+                                            <th class="text-center">Birim Fiyat</th>
+                                            <th class="text-center">Adet</th>
+                                            <th class="text-end">Toplam</th>
+                                            <th class="text-center" style="width: 60px;">İşlem</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var item in order.OrderItems)
+                                        {
+                                            var lineTotal = item.UnitPrice * item.Quantity;
+                                            <tr>
+                                                <td>
+                                                    <strong>@(item.Product?.Name ?? "Ürün")</strong>
+                                                    @if (!string.IsNullOrEmpty(item.Notes))
+                                                    {
+                                                        <br /><small class="text-muted">📝 @item.Notes</small>
+                                                    }
+                                                </td>
+                                                <td class="text-center">@item.UnitPrice.ToString("N2") ₺</td>
+                                                <td class="text-center">
+                                                    <div class="qty-controls d-inline-flex">
+                                                        <form asp-action="UpdateItemQuantity" asp-controller="Table" asp-area="Admin" method="post" style="display:inline;">
+                                                            @Html.AntiForgeryToken()
+                                                            <input type="hidden" name="orderItemId" value="@item.Id" />
+                                                            <input type="hidden" name="quantity" value="@(item.Quantity - 1)" />
+                                                            <input type="hidden" name="tableId" value="@Model.Id" />
+                                                            <button type="submit" class="btn btn-outline-danger btn-qty"
+                                                                    @(item.Quantity <= 1 ? "onclick=return confirm('Adet 0 olacak, ürün silinecek. Emin misiniz?')" : "")>−</button>
+                                                        </form>
+                                                        <span class="qty-value">@item.Quantity</span>
+                                                        <form asp-action="UpdateItemQuantity" asp-controller="Table" asp-area="Admin" method="post" style="display:inline;">
+                                                            @Html.AntiForgeryToken()
+                                                            <input type="hidden" name="orderItemId" value="@item.Id" />
+                                                            <input type="hidden" name="quantity" value="@(item.Quantity + 1)" />
+                                                            <input type="hidden" name="tableId" value="@Model.Id" />
+                                                            <button type="submit" class="btn btn-outline-success btn-qty">+</button>
+                                                        </form>
+                                                    </div>
+                                                </td>
+                                                <td class="text-end fw-bold">@lineTotal.ToString("N2") ₺</td>
+                                                <td class="text-center">
+                                                    <form asp-action="RemoveItem" asp-controller="Table" asp-area="Admin" method="post" style="display:inline;"
+                                                          onsubmit="return confirm('Bu ürünü siparişten kaldırmak istediğinize emin misiniz?');">
+                                                        @Html.AntiForgeryToken()
+                                                        <input type="hidden" name="orderItemId" value="@item.Id" />
+                                                        <input type="hidden" name="tableId" value="@Model.Id" />
+                                                        <button type="submit" class="btn btn-outline-danger btn-sm">🗑</button>
+                                                    </form>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    }
+
+                    <!-- Toplam Bölümü -->
+                    <div class="total-section">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="total-label">Genel Toplam</div>
+                                <div class="total-amount">@orderTotal.ToString("N2") ₺</div>
+                            </div>
+                            <div>
+                                <div class="total-label">Toplam Ürün</div>
+                                <div class="total-amount" style="font-size:1.4rem;">@allItems.Sum(i => i.Quantity) adet</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Hesabı Kapat Butonu -->
+                    @if (Model.Status != TableStatus.Empty)
+                    {
+                        @if (User.IsInRole("Admin"))
+                        {
+                            <div class="action-buttons mb-4">
+                                <form asp-action="CloseTable" asp-controller="Table" asp-area="Admin" method="post"
+                                      onsubmit="return confirm('Bu masanın hesabını kapatmak istediğinize emin misiniz?\n\nToplam: @orderTotal.ToString("N2") ₺\n\nBu işlem geri alınamaz.');">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@Model.Id" />
+                                    <button type="submit" class="btn btn-close-table">
+                                        💳 Hesabı Kapat — @orderTotal.ToString("N2") ₺
+                                    </button>
+                                </form>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="alert alert-info mb-4">
+                                <i class="fa fa-info-circle"></i> Sadece Admin yetkilileri hesabı kapatabilir.
+                            </div>
+                        }
+                    }
+                }
+                else
+                {
+                    <div class="order-table-wrapper">
+                        <div class="empty-orders">
+                            <span style="font-size: 3rem;">📋</span>
+                            <h5 class="mt-2">Bu masada aktif sipariş bulunmuyor</h5>
+                            <p class="text-muted">Garson panelinden veya müşteri siparişi ile ürünler buraya düşecektir.</p>
+                        </div>
+                    </div>
+                }
+
+            </main>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

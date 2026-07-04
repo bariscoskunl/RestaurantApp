@@ -12,6 +12,7 @@ namespace RestaurantApp.Services.Interfaces
     {
         Task<IEnumerable<Order>> GetAllOrderAsync();
         Task<IEnumerable<Order>> GetOrdersByTableIdAsync(int tableId);
+        Task<Order?> GetActiveOrderByUserIdAsync(string userId);
         Task<Order?> GetOrderByIdWithItemsAsync(int orderId);
         Task<Order> CreateOrderAsync(Order order);
         Task UpdateOrderStatusAsync(int orderId, OrderStatus newStatus);

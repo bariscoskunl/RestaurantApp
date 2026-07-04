@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using RestaurantApp.Common.Enums;
 using RestaurantApp.Common.Models;
 using RestaurantApp.Data;
@@ -21,7 +21,17 @@ namespace RestaurantApp.Services.Repositories
         }
         public async Task<IEnumerable<Table>> GetAllTablesAsync()
         {
-           return await _context.Tables.ToListAsync();
+           return await _context.Tables
+               .Include(t => t.Orders.Where(o => o.Status != RestaurantApp.Common.Enums.OrderStatus.Completed && o.Status != RestaurantApp.Common.Enums.OrderStatus.Cancelled))
+                   .ThenInclude(o => o.OrderItems)
+                       .ThenInclude(oi => oi.Product)
+               .ToListAsync();
+        }
+        public async Task<IEnumerable<Table>> GetEmptyTableAsync()
+        {
+            return await _context.Tables
+                .Where(t => t.Status == TableStatus.Empty)
+                .ToListAsync();
         }
         public async Task<Table?> GetTableByIdAsync(int id)
         {
@@ -41,5 +51,14 @@ namespace RestaurantApp.Services.Repositories
                 await _context.SaveChangesAsync();
             }
         }
+        public async Task DeleteTableAsync(int id)
+        {
+            var table = await _context.Tables.FindAsync(id);
+            if (table != null)
+            {
+                _context.Tables.Remove(table);
+                await _context.SaveChangesAsync();
+            }
+        }       
     }
 }

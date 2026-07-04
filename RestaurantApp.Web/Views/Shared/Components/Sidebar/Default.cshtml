@@ -1,47 +1,85 @@
-            <!-- Sepet Sidebar -->
-            <div id="cart-sidebar" class="cart-sidebar">
-                <div class="cart-header">
-                    <button type="button" class="close" onclick="toggleCart()">&times;</button>
-                    <h4>My Cart</h4>
+
+@{
+    var activeOrders = ViewBag.ActiveOrders as List<RestaurantApp.Common.Models.Order> ?? new List<RestaurantApp.Common.Models.Order>();
+    var allItems = activeOrders.SelectMany(o => o.OrderItems).ToList();
+    var orderTotal = allItems.Sum(oi => oi.UnitPrice * oi.Quantity);
+}
+<!-- Sepet Sidebar -->
+<div id="cart-sidebar" class="cart-sidebar">
+    <div class="cart-header">
+        <button type="button" class="close" onclick="toggleCart()">&times;</button>
+        <h4>My Cart</h4>
+    </div>
+    <div class="cart-body">
+        <ul id="cart-items" class="list-group">
+            <!-- Ürünler burada listelenecek -->
+        </ul>
+    </div>
+    <div id="cart-total" class="cart-total">
+        <!-- Toplam fiyat burada görünecek -->
+    </div>
+    <div class="cart-table-number">
+        <label for="table-number-input"><i class="fa fa-cutlery"></i> Masa Seçimi</label>
+        @if (ViewBag.ActiveTableId != null)
+        {
+            <!-- Müşterinin aktif siparişi var, masayı KİLİTLİYORUZ -->
+            <select id="table-number-input" class="form-control" disabled style="background-color: #e9ecef; cursor: not-allowed;">
+                <option value="@ViewBag.ActiveTableId">Masa @ViewBag.ActiveTableNumber</option>
+            </select>
+            <!-- Javascript'in disabled nesneden de val() ile değer okuyabilmesi için garanti hidden input -->
+            <input type="hidden" id="active-table-hidden-input" value="@ViewBag.ActiveTableId" />
+            <small class="text-danger mt-1 d-block">Mevcut bir siparişiniz olduğu için masa değiştirilemez.</small>
+        }
+        else
+        {
+            <!-- Aktif siparişi yok, istediği masayı GİREBİLİR -->
+            <select id="table-number-input" class="form-control">
+                <option value="">Lütfen boş bir masa seçin...</option>
+                @foreach (var table in ViewBag.EmptyTables)
+                {
+                    <option value="@table.Id">Masa @table.TableNumber</option>
+                }
+            </select>
+            <span id="table-number-error" class="table-number-error" style="display:none;">Lütfen sipariş vermek için bir masa seçin.</span>
+        }
+    </div>
+    <div id="total-price" class="cart-footer">
+        <button class="btn btn-primary btn-block" onclick="saveCart()">Save Order</button>
+    </div>
+</div>
+<div id="cart-overlay" class="cart-overlay" onclick="toggleCart()"></div>
+
+<!-- Floating Action Button (FAB) for Cart -->
+@if (User?.Identity?.IsAuthenticated is true && User.IsInRole("User"))
+{
+    <button class="fab-cart" onclick="toggleCart()">
+        <i class="fa fa-shopping-cart"></i>
+        <span class="badge cart-count-badge">0</span>
+    </button>
+}
+
+<!-- Orders Sidebar -->
+<div id="orders-sidebar" class="orders-sidebar">
+    <div class="cart-header">
+        <button type="button" class="close" onclick="toggleOrders()">&times;</button>
+        <h4>Today's Orders</h4>
+    </div>
+    <div class="">
+        <ul id="orders-items" class="list-group">
+            <!-- Orders burada listelenecek -->            
+        </ul>
+        <div class="total-section">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="total-label">Genel Toplam</div>
+                    <div class="total-amount" id="orders-grand-total">@orderTotal.ToString("N2") ₺</div>
                 </div>
-                <div class="cart-body">
-                    <ul id="cart-items" class="list-group">
-                        <!-- Ürünler burada listelenecek -->
-                    </ul>
-                </div>
-                <div id="cart-total" class="cart-total">
-                    <!-- Toplam fiyat burada görünecek -->
-                </div>
-                <div class="cart-table-number">
-                    <label for="table-number-input"><i class="fa fa-cutlery"></i> Masa Numarası</label>
-                    <input type="number" id="table-number-input" class="form-control" placeholder="Enter table number..." min="1" />
-                    <span id="table-number-error" class="table-number-error" style="display:none;">Please enter a table number to place your order.</span>
-                </div>
-                <div id="total-price" class="cart-footer">
-                    <button class="btn btn-primary btn-block" onclick="saveCart()">Save Order</button>
+                <div>
+                    <div class="total-label">Toplam Ürün</div>
+                    <div class="total-amount" id="orders-total-items" style="font-size:1.4rem;">@allItems.Sum(i => i.Quantity) adet</div>
                 </div>
             </div>
-            <div id="cart-overlay" class="cart-overlay" onclick="toggleCart()"></div>
-
-            <!-- Floating Action Button (FAB) for Cart -->
-            @if (User?.Identity?.IsAuthenticated is true && User.IsInRole("User"))
-            {
-                <button class="fab-cart" onclick="toggleCart()">
-                    <i class="fa fa-shopping-cart"></i>
-                    <span class="badge cart-count-badge">0</span>
-                </button>
-            }
-
-            <!-- Orders Sidebar -->
-            <div id="orders-sidebar" class="orders-sidebar">
-                <div class="cart-header">
-                    <button type="button" class="close" onclick="toggleOrders()">&times;</button>
-                    <h4>Today's Orders</h4>
-                </div>
-                <div class="">
-                    <ul id="orders-items" class="list-group">
-                        <!-- Orders burada listelenecek -->
-                    </ul>
-                </div>
-            </div>
-            <div id="orders-overlay" class="orders-overlay" onclick="toggleOrders()"></div>
+        </div>
+    </div>
+</div>
+<div id="orders-overlay" class="orders-overlay" onclick="toggleOrders()"></div>

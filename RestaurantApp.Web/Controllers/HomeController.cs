@@ -5,9 +5,11 @@ using Microsoft.Build.Execution;
 using Newtonsoft.Json;
 using RestaurantApp.Common.Models;
 using RestaurantApp.Services.Interfaces;
+using RestaurantApp.Common.Enums;
 using RestaurantApp.Services.Repositories;
 using RestaurantApp.Web.Models;
 using System.Diagnostics;
+using System.Security.Claims;
 
 namespace RestaurantApp.Web.Controllers
 {
@@ -15,19 +17,23 @@ namespace RestaurantApp.Web.Controllers
     {
         private readonly IProductRepository _productRepository;
         private readonly ICategoryRepository _categoryRepository;
+        private readonly IOrderRepository _orderRepository;
+        private readonly ITableRepository _tableRepository;
         private readonly ISaleRepository _saleRepository;
         private const string CartSessionKey = "Cart";
 
-        public HomeController(IProductRepository productRepository, ICategoryRepository categoryRepository, ISaleRepository saleRepository)
+        public HomeController(IProductRepository productRepository, ICategoryRepository categoryRepository, IOrderRepository orderRepository, ITableRepository tableRepository, ISaleRepository saleRepository)
         {
             _productRepository = productRepository;
             _categoryRepository = categoryRepository;
+            _orderRepository = orderRepository;
+            _tableRepository = tableRepository;
             _saleRepository = saleRepository;
         }
         public async Task<IActionResult> Index()
         {
             var products = await _productRepository.GetAllProductsAsync();
-            var categories = await _categoryRepository.GetAllCategoriesAsync();
+            var categories = await _categoryRepository.GetActiveCategoriesAsync();           
 
             var viewModel = new HomeViewModel
             {
@@ -122,53 +128,72 @@ namespace RestaurantApp.Web.Controllers
             try
             {
                 var cart = orderRequest.Cart;
-                var tableNumber = orderRequest.TableNumber;
+                var tableId = orderRequest.TableNumber;
 
                 if (cart == null || cart.Count == 0)
                 {
-                    return BadRequest(new { message = "Cart is empty" });
+                    return BadRequest(new { message = "Sepetiniz boş!" });
                 }
 
-                if (tableNumber == null || tableNumber < 1)
+                if (tableId == null || tableId < 1)
                 {
-                    return BadRequest(new { message = "Table number is required" });
+                    return BadRequest(new { message = "Lütfen geçerli bir masa seçin!" });
                 }
 
-                var sale = new Sale
+                // GÜVENLİK: Kullanıcının zaten aktif bir siparişi var mı?
+                var activeOrder = await _orderRepository.GetActiveOrderByUserIdAsync(userId);
+                if (activeOrder != null && activeOrder.TableId != tableId)
                 {
-                    SaleDate = DateTime.Now,
-                    TotalPrice = 0,
-                    TableNumber = tableNumber
+                     // Eğer kullanıcının aktif masası varsa ve farklı bir masaya atmaya çalışıyorsa zorla kendi masasına al.
+                     tableId = activeOrder.TableId;
+                }
+
+                var table = await _tableRepository.GetTableByIdAsync(tableId.Value);
+                if (table == null)
+                {
+                    return BadRequest(new { message = "Seçtiğiniz masa geçersiz! Lütfen başka bir masa seçin." });
+                }
+
+                // Eğer yeni masa seçildiyse (aktif siparişi yoksa) masanın boş olduğundan emin ol
+                if (activeOrder == null && table.Status != RestaurantApp.Common.Enums.TableStatus.Empty)
+                {
+                    return BadRequest(new { message = "Seçtiğiniz masa şu anda dolu! Lütfen başka bir masa seçin." });
+                }
+
+                var newOrder = new Order
+                {
+                    TableId = table.Id,
+                    WaiterId = userId, // ÇOK KRİTİK: Siparişi veren kişiyi bağlıyoruz!
+                    CreatedAt = DateTime.UtcNow,
+                    Status = Common.Enums.OrderStatus.Preparing,
+                    OrderItems = new List<OrderItem>()
                 };
-
-                await _saleRepository.AddSaleAsync(sale);
-
-                var saleId = sale.Id;
-                decimal totalPrice = 0;
 
                 foreach (var item in cart)
                 {
                     var product = await _productRepository.GetProductByIdAsync(item.ProductId);
-                    item.ProductPrice = product.Price;
-                    item.ProductTotalPrice = item.ProductPrice * item.Quantity;
-                    totalPrice += item.ProductTotalPrice;
-                    item.SaleId = saleId;
-                    if (!User.IsInRole("Admin"))
-                    {
-                        item.UserId = userId;
-                    }
 
-                    await _saleRepository.AddSaleProductAsync(item);
+                    var orderItem = new OrderItem
+                    {
+                        ProductId = product.Id,
+                        Quantity = item.Quantity,
+                        UnitPrice = product.Price,
+                        Notes = ""
+                    };
+                    newOrder.OrderItems.Add(orderItem);                                 
+                    
                 }
 
-                sale.TotalPrice = totalPrice;
-                await _saleRepository.UpdateSaleAsync(sale);
+                await _orderRepository.CreateOrderAsync(newOrder);
+                await _tableRepository.UpdateTableStatusAsync(table.Id, RestaurantApp.Common.Enums.TableStatus.Occupied);
 
-                return Ok(new { success = true });
+                return Ok(new { success = true, message = "Siparişiniz başarıyla alındı!" });
+
+
             }
             catch (Exception ex)
             {
-                return BadRequest(new { message = $"Error: {ex.Message}", details = ex.InnerException?.Message });
+                return StatusCode(500, new { message = "Sipariş oluşturulurken sunucu tarafında bir hata oluştu." });
             }
         }
 
@@ -200,22 +225,25 @@ namespace RestaurantApp.Web.Controllers
         [HttpGet("GetTodaySales/{userId}")]
         public async Task<IActionResult> GetTodaySales([FromRoute] string userId)
         {
-            var today = DateTime.Today;
-            var sales = await _saleRepository.GetSalesByDateAsync(today, userId);
+            // Müşteriler "Siparişler"e bastığında eski Sales verisi yerine "Aktif Siparişlerini" görmelidir.
+            var allOrders = await _orderRepository.GetAllOrderAsync();
+            var myActiveOrders = allOrders.Where(o => o.WaiterId == userId && 
+                                                 o.Status != Common.Enums.OrderStatus.Completed && 
+                                                 o.Status != Common.Enums.OrderStatus.Cancelled).ToList();
 
-            var salesObj = sales.Select(s => new
+            var salesObj = myActiveOrders.Select(s => new
             {
                 s.Id,
-                s.SaleDate,
-                s.TotalPrice,
-                s.TableNumber,
-                Products = s.SaleProducts.Select(sp => new
+                SaleDate = s.CreatedAt,
+                TotalPrice = s.OrderItems.Sum(oi => oi.UnitPrice * oi.Quantity),
+                TableNumber = s.Table?.TableNumber,
+                Products = s.OrderItems.Select(sp => new
                 {
                     sp.ProductId,
                     sp.Product.Name,
-                    sp.ProductPrice,
+                    ProductPrice = sp.UnitPrice,
                     sp.Quantity,
-                    sp.ProductTotalPrice
+                    ProductTotalPrice = sp.UnitPrice * sp.Quantity
                 })
             });
 

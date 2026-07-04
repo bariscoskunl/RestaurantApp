@@ -1,4 +1,4 @@
-﻿using Microsoft.Data.SqlClient.DataClassification;
+using Microsoft.Data.SqlClient.DataClassification;
 using RestaurantApp.Common.Models;
 using System;
 using System.Collections.Generic;
@@ -11,8 +11,10 @@ namespace RestaurantApp.Services.Interfaces
     public interface ITableRepository
     {
         Task<IEnumerable<Table>> GetAllTablesAsync();
+        Task<IEnumerable<Table>> GetEmptyTableAsync();
         Task<Table?> GetTableByIdAsync(int id);
         Task AddTableAsync(Table table);
         Task UpdateTableStatusAsync(int tableId, RestaurantApp.Common.Enums.TableStatus newStatus);
+        Task DeleteTableAsync(int id);
     }
 }

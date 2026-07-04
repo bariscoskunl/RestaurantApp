@@ -1,0 +1,26 @@
+﻿@{
+    ViewData["Title"] = "E-posta Doğrulama";
+}
+
+<div class="container text-center mt-5">
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-body p-5">
+                <i class="fa fa-envelope-o fa-3x text-success mb-3"></i>
+                <h3>E-posta Gönderildi!</h3>
+                <p class="mt-3">
+                    Kayıt işleminiz başarılı. Hesabınızı aktif hale getirmek için
+                    e-posta adresinize gönderilen doğrulama bağlantısına tıklayın.
+                </p>
+                <p class="text-muted">
+                    E-postayı bulamıyorsanız spam/gereksiz klasörünü kontrol edin.
+                </p>
+                <a href="@Url.Action("Login", "Account")" class="btn btn-primary mt-3">
+                    Giriş Sayfasına Dön
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+</div>

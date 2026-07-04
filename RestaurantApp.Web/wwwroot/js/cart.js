@@ -205,11 +205,11 @@ async function saveCart() {
         .then(data => {
             if (data.success) {
                 alert('Sipariş başarıyla kaydedildi! Masa: ' + tableNumber);
-                toggleCart();
                 localStorage.removeItem('cart'); // Önce sepeti temizle
                 updateCartCount(); // Sonra sayacı güncelle (0 olacak)
-                renderCart(); // Sepet listesini boşalt
-                // Masa numarası localStorage'da kalır, sonraki siparişte dolu olur
+                
+                // Siparişten sonra masa kilidinin aktif olması için sayfayı yenilemeliyiz
+                window.location.reload();
             }
         })
         .catch(error => {

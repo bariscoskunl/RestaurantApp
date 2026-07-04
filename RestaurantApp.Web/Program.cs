@@ -8,6 +8,7 @@ using RestaurantApp.Data;
 using RestaurantApp.Services.Interfaces;
 using RestaurantApp.Services.Repositories;
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Authentication.Google;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -37,6 +38,9 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.Cookie.IsEssential = true;
         options.LoginPath = "/Account/Login";
         options.AccessDeniedPath = "/Account/AccessDenied";
+    }).AddGoogle(GoogleOptions => {
+        GoogleOptions.ClientId = builder.Configuration["Authentication:Google:ClientId"]!;
+        GoogleOptions.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"]!;
     });
 
 builder.Services.AddAuthorization(options =>
@@ -61,6 +65,7 @@ builder.Services.AddScoped<ISaleRepository, SaleRepository>();
 builder.Services.AddScoped<ITableRepository, TableRepository>();
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<IOrderItemRepository, OrderItemRepository>();
+builder.Services.AddScoped<IEmailService, EmailService>(); 
 
 
 

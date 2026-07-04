@@ -1,8 +1,13 @@
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using RestaurantApp.Common.Models;
+using RestaurantApp.Services.Interfaces;
 using RestaurantApp.Web.Models;
+using System.Security.Claims;
 
 namespace RestaurantApp.Web.Controllers
 {
@@ -11,12 +16,14 @@ namespace RestaurantApp.Web.Controllers
         private readonly RoleManager<IdentityRole> _roleManager;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signInManager;
+        private readonly IEmailService _emailService;
 
-        public AccountController(IServiceProvider serviceProvider, UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager)
+        public AccountController(IServiceProvider serviceProvider, UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager, IEmailService emailService)
         {
             _roleManager = serviceProvider.GetRequiredService<RoleManager<IdentityRole>>(); // Role manager'ı alıyoruz
             _userManager = userManager;  // User manager'ı alıyoruz
             _signInManager = signInManager;  // Sign-in manager'ı alıyoruz     // Bu DI islemlerini Identity framework'ün sağladığı servisler üzerinden yapıyoruz  (Paket dahilinde)
+            _emailService = emailService;
         }
 
         [HttpGet]
@@ -42,16 +49,33 @@ namespace RestaurantApp.Web.Controllers
                 {
                     UserName = model.Email,
                     Email = model.Email,
-                    EmailConfirmed = true
+                    EmailConfirmed = false
                 };
 
-                var result = await _userManager.CreateAsync(user, model.Password); // Kullanıcıyı oluşturuyoruz  // ilk nesne kullanicinin bilgilerini tutarken, ikinci nesne ise kullanıcının şifresini belirtiyor
+                var result = await _userManager.CreateAsync(user, model.Password);
 
                 if (result.Succeeded)
                 {
                     await _userManager.AddToRoleAsync(user, "User"); // Kullanıcıyı "User" rolüne ekliyoruz
                     await _signInManager.SignInAsync(user, isPersistent: false); // Kullanıcıyı otomatik olarak giriş yapmış gibi işaretliyoruz // beni hatirla gibi bir ozellik ispersistent 
-                    return RedirectToAction("Index", "Home"); // Kayıt başarılıysa anasayfaya yönlendiriyoruz
+
+                    var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+                    var confirmationLink = Url.Action(
+                        "ConfirmEmail",
+                        "Account",
+                        new { userId = user.Id, token = token },
+                        Request.Scheme
+                        );
+                    var emailBody = $@"
+                    <h2>E-posta Doğrulama</h2>
+                    <p>Merhaba,</p>
+                    <p>Hesabınızı doğrulamak için aşağıdaki bağlantıya tıklayın:</p>
+                    <a href='{confirmationLink}'>Hesabımı Doğrula</a>
+                    <p>Bu bağlantı 24 saat geçerlidir.</p>";
+
+                    await _emailService.SendEmailAsync(model.Email, "E-posta Doğrulama - RestaurantApp", emailBody);
+
+                    return RedirectToAction("EmailVerificationSent"); // Kayıt başarılıysa kayit sayfasina yönlendiriyoruz
                 }
                 // yukarida bir hata olmus ise 
                 foreach (var error in result.Errors)
@@ -69,6 +93,38 @@ namespace RestaurantApp.Web.Controllers
         }
 
         [HttpGet]
+        public async Task<IActionResult> ConfirmEmail(string userId, string token)
+        {
+            if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(token))
+            {
+                return RedirectToAction("Login");
+            }
+
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+            {
+                return RedirectToAction("Login");
+            }
+
+            var result = await _userManager.ConfirmEmailAsync(user, token);
+            if (result.Succeeded)
+            {
+                TempData["SuccessMessage"] = "E-posta adresiniz başarıyla doğrulandı. Artık giriş yapabilirsiniz.";
+                return RedirectToAction("Login");
+
+            }
+            TempData["ErrorMessage"] = "Doğrulama bağlantısı geçersiz veya süresi dolmuş.";
+            return RedirectToAction("Login");
+        }
+
+        [Authorize]
+        [HttpGet]
+        public IActionResult EmailVerificationSent()
+        {
+            return View();
+        }
+
+        [HttpGet]
         public IActionResult Login()
         {
             return View();
@@ -80,8 +136,14 @@ namespace RestaurantApp.Web.Controllers
             {
                 var user = await _userManager.FindByEmailAsync(model.Email); // Email'e göre kullanıcıyı buluyoruz
                 if (user != null)
-                {
-                    var result = await _signInManager.PasswordSignInAsync(user.UserName, model.Password, model.RememberMe, lockoutOnFailure: false); // Şifre doğrulaması yapıyoruz  //lockoutOnFailure: false => başarısız giriş denemelerinde hesabın kilitlenmemesi için
+                {  
+                    if (!await _userManager.IsEmailConfirmedAsync(user))
+                    {
+                        ModelState.AddModelError(string.Empty,
+                           "E-posta adresiniz henüz doğrulanmamış. Lütfen e-postanızı kontrol edin.");
+                        return View(model);
+                    }
+                    var result = await _signInManager.PasswordSignInAsync(user.UserName, model.Password, model.RememberMe, lockoutOnFailure: false); // Şifre doğrulaması yapıyoruz  //lockoutOnFailure: false => başarısız giriş denemelerinde hesabın kilitlenmemesi için                     
                     if (result.Succeeded)
                     {
                         var roles = await _userManager.GetRolesAsync(user); // Kullanıcının rollerini alıyoruz
@@ -98,7 +160,66 @@ namespace RestaurantApp.Web.Controllers
             return View(model);
         }
 
-        [HttpPost]     
+        [HttpGet]
+        public IActionResult GoogleLogin()
+        {
+            var properties = new AuthenticationProperties
+            {
+                RedirectUri = Url.Action("GoogleResponse")
+            };
+            return Challenge(properties, GoogleDefaults.AuthenticationScheme);
+        }
+        [HttpGet]
+        public async Task<IActionResult> GoogleResponse()
+        {
+            var result = await HttpContext.AuthenticateAsync(IdentityConstants.ExternalScheme);
+            if (!result.Succeeded)
+            {
+                return RedirectToAction("Login");
+            }
+
+            var email = result.Principal.FindFirstValue(ClaimTypes.Email);
+            var name = result.Principal.FindFirstValue(ClaimTypes.Name);
+
+            if (string.IsNullOrEmpty(email))
+            {
+                return RedirectToAction("Login");
+            }
+
+            var user = await _userManager.FindByEmailAsync(email);
+            if (user == null)
+            {
+                user = new ApplicationUser
+                {
+                    UserName = email,
+                    Email = email,
+                    EmailConfirmed = true
+                };
+
+                var createResult = await _userManager.CreateAsync(user);
+                if (!createResult.Succeeded)
+                {
+                    return RedirectToAction("Login");
+                }
+
+                if (!await _roleManager.RoleExistsAsync("User"))
+                {
+                    await _roleManager.CreateAsync(new IdentityRole("User"));
+                }
+                await _userManager.AddToRoleAsync(user, "User");
+            }
+
+            await _signInManager.SignInAsync(user, isPersistent: false);
+
+            var roles = await _userManager.GetRolesAsync(user);
+            if (roles.Contains("Admin"))
+            {
+                return RedirectToAction("Index", "Admin", new { area = "Admin" });
+            }
+            return RedirectToAction("Index", "Home");
+        }
+
+        [HttpPost]
         public async Task<IActionResult> Logout()
         {
             await _signInManager.SignOutAsync();

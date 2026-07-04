@@ -26,7 +26,15 @@ async function toggleOrders() {
                 ordersItemsElement.innerHTML = '';
 
 
+                let grandTotal = 0;
+                let totalItems = 0;
+
                 data.forEach(order => {
+                    grandTotal += order.totalPrice;
+                    order.products.forEach(p => {
+                        totalItems += p.quantity;
+                    });
+
                     const orderElement = document.createElement('li');
                     orderElement.className = 'list-group-item';
                     orderElement.innerHTML = `
@@ -56,12 +64,17 @@ async function toggleOrders() {
                                                             </table>
                                                             ${userInfo.email == 'admin@domain.com' ? `<button id="editButton" class="btn btn-sm btn-warning" onclick="openEditModal(${order.id})">Düzenle</button>` : ''}
 
-
                                                            
                                                         </div>
                                                     `;
                     ordersItemsElement.appendChild(orderElement);
                 });
+
+                // Toplamları ekrana yazdır
+                const grandTotalElement = document.getElementById('orders-grand-total');
+                const totalItemsElement = document.getElementById('orders-total-items');
+                if (grandTotalElement) grandTotalElement.innerText = grandTotal.toFixed(2) + ' ₺';
+                if (totalItemsElement) totalItemsElement.innerText = totalItems + ' adet';
             })
             .catch(error => {
                 console.error('Error fetching today sales:', error);

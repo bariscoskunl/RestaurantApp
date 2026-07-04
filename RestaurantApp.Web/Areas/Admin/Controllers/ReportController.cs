@@ -7,9 +7,12 @@ using RestaurantApp.Services.Interfaces;
 using RestaurantApp.Services.Repositories;
 using RestaurantApp.Web.Models;
 
+using Microsoft.AspNetCore.Authorization;
+
 namespace RestaurantApp.Web.Areas.Admin.Controllers
 {
     [Area("Admin")]
+    [Authorize(Roles = "Admin")]
     public class ReportController : Controller
     {
         private readonly ISaleRepository _saleRepository;

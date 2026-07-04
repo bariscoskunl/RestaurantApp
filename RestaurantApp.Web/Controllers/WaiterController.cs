@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using RestaurantApp.Common.Enums;
 using RestaurantApp.Common.Models;
 using RestaurantApp.Services.Interfaces;
@@ -8,7 +9,10 @@ using System.Security.Claims;
 
 namespace RestaurantApp.Web.Controllers
 {
-    public class WaiterController : Controller
+    [Authorize(Roles = "Garson")]
+    [Route("api/waiter")]
+    [ApiController]
+    public class WaiterController : ControllerBase
     {
         private readonly ITableRepository _tableRepository;
         private readonly IOrderRepository _orderRepository;

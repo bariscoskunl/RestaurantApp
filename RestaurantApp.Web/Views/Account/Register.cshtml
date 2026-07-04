@@ -8,6 +8,34 @@
 @section Styles {
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
     <style>
+
+        .auth-card .google-btn {
+            width: 100%;
+            padding: 13px;
+            background: #ffffff;
+            border: 2px solid #e8e8e8;
+            border-radius: 10px;
+            color: #444;
+            font-size: 15px;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: background-color 0.2s, border-color 0.2s;
+        }
+
+            .auth-card .google-btn:hover {
+                background: #f7f7f7;
+                border-color: #ccc;
+            }
+
+            .auth-card .google-btn i {
+                color: #db4437; /* Orijinal Google Kırmızısı */
+                font-size: 18px;
+            }
         .auth-page {
             display: flex;
             justify-content: center;
@@ -193,6 +221,29 @@
             border-left: 3px solid #dc2626;
             margin-bottom: 6px;
         }
+        .auth-card .divider {
+            display: flex;
+            align-items: center;
+            margin: 20px 0;
+            color: #ccc;
+            font-size: 13px;
+        }
+
+            .auth-card .divider::before,
+            .auth-card .divider::after {
+                content: '';
+                flex: 1;
+                height: 1px;
+                background: #e8e8e8;
+            }
+
+            .auth-card .divider::before {
+                margin-right: 12px;
+            }
+
+            .auth-card .divider::after {
+                margin-left: 12px;
+            }
     </style>
 }
 
@@ -230,7 +281,15 @@
             </div>
             <button type="submit" class="auth-btn">Hesap Oluştur</button>
         </form>
+        
+        <div class="divider">veya</div>
 
+        <form asp-controller="Account" asp-action="GoogleLogin" method="get">
+            
+            <button type="submit" class="google-btn">
+                <i class="fa fa-google"></i> Google ile Devam Et
+            </button>
+        </form>
         <div class="auth-footer">
             Zaten bir hesabın var mı? <a asp-controller="Account" asp-action="Login">Giriş Yap</a>
         </div>

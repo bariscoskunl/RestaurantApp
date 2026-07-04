@@ -1,4 +1,4 @@
-﻿using RestaurantApp.Common.Models;
+using RestaurantApp.Common.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,5 +12,6 @@ namespace RestaurantApp.Services.Interfaces
         Task<IEnumerable<OrderItem>> GetItemsByOrderIdAsync(int orderId);
         Task AddItemToOrderAsync(OrderItem orderItem);
         Task RemoveItemFromOrderAsync(int orderItemId);
+        Task UpdateItemQuantityAsync(int orderItemId, int newQuantity);
     }
 }

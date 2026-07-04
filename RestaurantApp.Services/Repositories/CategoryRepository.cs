@@ -23,7 +23,10 @@ namespace RestaurantApp.Services.Repositories
         {
             return await _context.Categories.ToListAsync();
         }
-
+        public async Task<IEnumerable<Category>> GetActiveCategoriesAsync()
+        {
+            return await _context.Categories.Where(x => x.IsInStock).ToListAsync();
+        }
         public async Task<Category> GetCategoryByIdAsync(int id)
         {
             return await _context.Categories.FindAsync(id);

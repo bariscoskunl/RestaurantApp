@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using RestaurantApp.Common.Models;
 using RestaurantApp.Data;
 using RestaurantApp.Services.Interfaces;
@@ -38,6 +38,22 @@ namespace RestaurantApp.Services.Repositories
             if(item != null)
             {
                 _context.OrderItems.Remove(item);
+                await _context.SaveChangesAsync();
+            }
+        }
+        public async Task UpdateItemQuantityAsync(int orderItemId, int newQuantity)
+        {
+            var item = await _context.OrderItems.FindAsync(orderItemId);
+            if (item != null)
+            {
+                if (newQuantity <= 0)
+                {
+                    _context.OrderItems.Remove(item);
+                }
+                else
+                {
+                    item.Quantity = newQuantity;
+                }
                 await _context.SaveChangesAsync();
             }
         }

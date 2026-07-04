@@ -41,6 +41,12 @@ namespace RestaurantApp.Services.Repositories
                 .ToListAsync();
 
         }
+        public async Task<Order?> GetActiveOrderByUserIdAsync(string userId)
+        {
+            return await _context.Orders
+                .Include(o => o.Table)
+                .FirstOrDefaultAsync(o => o.WaiterId == userId && o.Status != OrderStatus.Completed && o.Status != OrderStatus.Cancelled);
+        }
         public async Task<Order?> GetOrderByIdWithItemsAsync(int orderId)
         {
             return await _context.Orders
