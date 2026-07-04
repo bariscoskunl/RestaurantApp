@@ -88,14 +88,11 @@ Admin tarafında, tüm masaların durumunun yönetildiği ana pano.
 
 ### 6️⃣ Masa Detay ve Sipariş Yönetimi (Admin)
 
-Masaların üzerine tıklandığında sipariş detaylarını gösteren görünümler. 
+Masaların üzerine tıklandığında sipariş detaylarını gösteren görünüm. 
 
-| Masa Üzerine Tıklayınca Açılan Detay | Masa Detayı / Çoklu Siparişler |
-| :---: | :---: |
-| ![Masa Detay 1](screenshots/16.png) | ![Masa Detay 2](screenshots/7.png) |
+![Masa Detay](screenshots/16.png)
 
-> **16.png:** Masa üzerine tıklandığında açılan ve hesap kapatma/siparişleri listeleme imkanı sunan temel masa detayı ekranı.  
-> **7.png:** Masanın içerisindeki sipariş durumlarını detaylı olarak gösteren ekran.
+> Masa üzerine tıklandığında açılan, hesap kapatma ve siparişleri listeleme imkanı sunan temel masa detayı ekranı. Birden fazla sipariş (Sipariş #6, #7 vb.) aynı sayfa içerisinde durumlarıyla birlikte detaylı olarak görüntülenir.
 
 ---
 
