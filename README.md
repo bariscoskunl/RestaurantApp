@@ -46,12 +46,9 @@ Kullanıcıların ilk karşılaştığı dinamik menü sayfası. Üstte **"Menü
 
 Kullanıcılar ürünleri sepete ekledikten sonra, sağ tarafta açılan **"My Cart"** panelinden sipariş sürecini yönetir. Sepet, **session tabanlı** çalışır ve her kullanıcı için bağımsız bir oturuma sahiptir. Masa seçimi yapıldıktan sonra aktif bir sipariş varsa masa değişikliği kilitlenir.
 
-| Boş Sepet — Yalnızca Masa Seçimi | Dolu Sepet — Ürünler ve Toplam |
-| :---: | :---: |
-| ![Boş Sepet](screenshots/9.png) | ![Dolu Sepet](screenshots/10.png) |
+![Akıllı Sepet](screenshots/10.png)
 
-> **Boş sepet** durumunda yalnızca masa seçimi dropdown'u ve "Save Order" butonu gösterilir. Aktif sipariş varsa, *"Mevcut bir siparişiniz olduğu için masa değiştirilemez"* uyarısı kırmızı renkte görünür.  
-> **Dolu sepet** durumunda eklenen ürünler (ürün adı, fiyat, miktar), toplam tutar, **-/+** butonlarıyla miktar kontrolü ve masa seçimi ile birlikte gösterilir.
+> **Sepet durumunda** eklenen ürünler (ürün adı, fiyat, miktar), toplam tutar, **-/+** butonlarıyla miktar kontrolü ve masa seçimi ile birlikte gösterilir. Masa seçimi dropdown'u üzerinden kullanıcının hangi masada oturduğu belirlenir.
 
 ---
 
@@ -61,17 +58,17 @@ Tekil Ürünler sayfasında gezinirken sepet panelinin sağdan açık haliyle bi
 
 ![Tekil Ürünler ve Sepet Paneli](screenshots/11.png)
 
-> Bu ekran görüntüsünde "Kutular ve Atıştırmalıklar" kategorisi seçili. Sepette **Tavuk Döner Dürüm** ve **Turşulu Tavuk Kutusu** yer alıyor. Toplam tutar **180,00 ₺** olarak hesaplanmış ve **Masa 2** seçili durumda.
+> Bu ekran görüntüsünde "Kutular ve Atıştırmalıklar" kategorisi seçili. Sepette **Tavuk Döner Dürüm** ve **Turşulu Tavuk Kutusu** yer alıyor. Toplam tutar **180,00 ₺** olarak hesaplanmış ve **Masa 2** seçili durumda. Siparişi tamamlamak için "Save Order" butonu kullanılır.
 
 ---
 
 ### 4️⃣ Sipariş Geçmişi Çekmecesi
 
-Navbar üzerindeki **"Siparişler"** butonuna tıklandığında sağdan kayarak açılan çekmece (drawer). Kullanıcının **bugünkü siparişlerini** gösteren bu panel, her siparişin durumunu (Hazırlanıyor/Tamamlandı), ürün detaylarını ve toplam tutarını listeler.
+Navbar üzerindeki **"Siparişler"** butonuna tıklandığında sağdan kayarak açılan çekmece (drawer). Kullanıcının **bugünkü siparişlerini** gösteren bu panel, her siparişin detaylarını listeler.
 
 ![Sipariş Çekmecesi](screenshots/3.png)
 
-> Çekmecede her sipariş ayrı bir kart olarak gösterilir. Siparişin durumu, oluşturulma zamanı ve içerdiği ürünler (adet ve fiyat bilgisiyle) listelenir.
+> Çekmecede **"Today's Orders"** başlığı altında her masanın geçmiş siparişleri tarih ve saat bazlı listelenir. Sipariş edilen ürünler, adetleri ve tutarları tablo formatında sunulur.
 
 ---
 
@@ -82,7 +79,7 @@ Restoran yöneticileri veya garsonlar için tasarlanmış **interaktif masa yön
 ![Masa Yönetimi Panosu](screenshots/12.png)
 
 > **Masa 2** "Dolu" statüsünde gösteriliyor. Kartın üzerinde **10 adet** ürün, **119 saat 17 dakika** bekleme süresi ve **1.210,00 ₺** toplam tutar bilgisi yer alıyor.  
-> Boş masalarda yalnızca durum etiketi ve detay bağlantısı görünür. Sağ üstteki **"+ Yeni Masa Ekle"** butonu ile yeni masalar oluşturulabilir.
+> Boş masalarda (Masa 1, 3, 4, 5, 6, 8) yalnızca yeşil durum etiketi ve detay bağlantısı görünür. Sağ üstteki **"+ Yeni Masa Ekle"** butonu ile yeni masalar oluşturulabilir.
 
 ---
 
@@ -97,28 +94,26 @@ Bir masaya tıklandığında açılan detay sayfası. Bu sayfa, masadaki tüm ak
 > - **Sipariş #2:** Tako Sever Menü (125,00 ₺) — 119 saat 28 dk önce verilmiş.
 > 
 > Altta **Genel Toplam: 305,00 ₺** ve **Toplam Ürün: 3 adet** özeti, ardından **"💳 Hesabı Kapat — 305,00 ₺"** butonu ile tek tuşla hesap kapatma imkanı sunulur.
-> 
-> Üst bölümde **MASA DURUMU** butonları (Boş / Dolu / Hesap Bekliyor) ile masanın durumu anlık olarak değiştirilebilir.
 
 ---
 
-### 7️⃣ Yeni Masa Ekleme (Admin)
+### 7️⃣ Sipariş Detay Görünümü — Çoklu Siparişler (Admin)
+
+Bir masada birden fazla sipariş olduğunda, her biri numarasıyla (Sipariş #6, #7, #8 gibi) ayrı ayrı listelenir. Bu görünüm, yoğun zamanlarda bile siparişlerin karışmamasını sağlar.
+
+![Çoklu Sipariş Detayları](screenshots/16.png)
+
+> **Sipariş #6** içerisinde Tako Sever Menü (125,00 ₺) bulunurken, **Sipariş #7** ve **#8** henüz içeriği olmayan (ürün eklenmemiş) veya iptal edilmiş siparişler olarak listelenir. Her sipariş başlığında "Hazırlanıyor" durumu ve zaman bilgisi yer alır.
+
+---
+
+### 8️⃣ Yeni Masa Ekleme (Admin)
 
 Admin panelinden yeni masa oluşturmak için kullanılan form. Masa numarası olarak rakam, harf veya özel isimler (VIP-3 gibi) girilebilir.
 
 ![Yeni Masa Ekle](screenshots/17.png)
 
 > Form, "Masa Numarası" alanı ve **"Masayı Kaydet"** butonu ile minimal ve kullanıcı dostu bir tasarıma sahiptir. Placeholder metin olarak *"Örn: 1, A1, VIP-3"* gösterilir.
-
----
-
-### 8️⃣ Sipariş Detay Görünümü — Çoklu Siparişler (Admin)
-
-Bir masada birden fazla sipariş olduğunda, her biri numarasıyla (Sipariş #6, #7, #8 gibi) ayrı ayrı listelenir. Bu görünüm, yoğun zamanlarda bile siparişlerin karışmamasını sağlar.
-
-![Çoklu Sipariş Detayları](screenshots/18.png)
-
-> **Sipariş #6** içerisinde Tako Sever Menü (125,00 ₺) bulunurken, **Sipariş #7** ve **#8** henüz içeriği olmayan (ürün eklenmemiş) siparişler olarak listelenir. Her sipariş başlığında "Hazırlanıyor" durumu ve zaman bilgisi yer alır.
 
 ---
 
