@@ -57,7 +57,6 @@ namespace RestaurantApp.Web.Controllers
                 if (result.Succeeded)
                 {
                     await _userManager.AddToRoleAsync(user, "User"); // Kullanıcıyı "User" rolüne ekliyoruz
-                    await _signInManager.SignInAsync(user, isPersistent: false); // Kullanıcıyı otomatik olarak giriş yapmış gibi işaretliyoruz // beni hatirla gibi bir ozellik ispersistent 
 
                     var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
                     var confirmationLink = Url.Action(
@@ -75,6 +74,7 @@ namespace RestaurantApp.Web.Controllers
 
                     await _emailService.SendEmailAsync(model.Email, "E-posta Doğrulama - RestaurantApp", emailBody);
 
+                    TempData["RegistrationComplete"] = true;
                     return RedirectToAction("EmailVerificationSent"); // Kayıt başarılıysa kayit sayfasina yönlendiriyoruz
                 }
                 // yukarida bir hata olmus ise 
@@ -109,18 +109,21 @@ namespace RestaurantApp.Web.Controllers
             var result = await _userManager.ConfirmEmailAsync(user, token);
             if (result.Succeeded)
             {
-                TempData["SuccessMessage"] = "E-posta adresiniz başarıyla doğrulandı. Artık giriş yapabilirsiniz.";
-                return RedirectToAction("Login");
-
+                await _signInManager.SignInAsync(user, isPersistent: false);
+                TempData["SuccessMessage"] = "E-posta adresiniz başarıyla doğrulandı ve giriş yapıldı.";
+                return RedirectToAction("Index", "Home");
             }
             TempData["ErrorMessage"] = "Doğrulama bağlantısı geçersiz veya süresi dolmuş.";
             return RedirectToAction("Login");
         }
 
-        [Authorize]
         [HttpGet]
         public IActionResult EmailVerificationSent()
         {
+            if (TempData["RegistrationComplete"] == null)
+            {
+                return RedirectToAction("Index", "Home");
+            }
             return View();
         }
 
