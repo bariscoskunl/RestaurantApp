@@ -51,6 +51,16 @@ namespace RestaurantApp.Web.Areas.Admin.Controllers
                 .Where(o => o.Status != OrderStatus.Completed && o.Status != OrderStatus.Cancelled)
                 .ToList();
 
+            var emptyOrders = activeOrders.Where(o => !o.OrderItems.Any()).ToList();
+            if (emptyOrders.Any())
+            {
+                foreach (var emptyOrder in emptyOrders)
+                {
+                    await _orderRepository.UpdateOrderStatusAsync(emptyOrder.Id, OrderStatus.Cancelled);
+                }
+                activeOrders = activeOrders.Where(o => o.OrderItems.Any()).ToList();
+            }
+
             // MİMARİ DOĞRU ÇÖZÜM: Rolleri Backend'de hazırlayıp Dictionary olarak yolluyoruz
             var orderRoles = new Dictionary<int, string>();
             foreach (var order in activeOrders)
@@ -127,6 +137,14 @@ namespace RestaurantApp.Web.Areas.Admin.Controllers
         public async Task<IActionResult> RemoveItem(int orderItemId, int tableId)
         {
             await _orderItemRepository.RemoveItemFromOrderAsync(orderItemId);
+            return RedirectToAction(nameof(Details), new { id = tableId });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CancelOrder(int orderId, int tableId)
+        {
+            await _orderRepository.UpdateOrderStatusAsync(orderId, OrderStatus.Cancelled);
             return RedirectToAction(nameof(Details), new { id = tableId });
         }
 

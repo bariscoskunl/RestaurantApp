@@ -289,6 +289,12 @@
                                 <div>
                                     <span class="badge bg-secondary">@orderStatusText</span>
                                     <small class="text-muted ms-2">@orderDurationText</small>
+                                    <form asp-action="CancelOrder" asp-controller="Table" asp-area="Admin" method="post" style="display:inline;" onsubmit="return confirm('Bu siparişi tamamen iptal etmek istediğinize emin misiniz?');">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="orderId" value="@order.Id" />
+                                        <input type="hidden" name="tableId" value="@Model.Id" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger ms-2" title="Siparişi İptal Et"><i class="fa fa-times"></i> İptal</button>
+                                    </form>
                                 </div>
                             </div>
 

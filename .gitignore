@@ -6,6 +6,14 @@
 # dotenv files
 .env
 
+# ASP.NET Core - Hassas bilgileri korumak için appsettings.json gizle
+# (Google OAuth, SMTP şifresi, veritabanı bağlantısı içerir)
+# Kurulum için appsettings.example.json dosyasını kopyalayın
+appsettings.json
+appsettings.*.json
+# Geliştirme ortamı için appsettings.Development.json'a izin ver
+!appsettings.Development.json
+
 # User-specific files
 *.rsuser
 *.suo
