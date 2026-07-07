@@ -2,13 +2,13 @@
     <div class="position-sticky pt-3">
         <ul class="nav flex-column">
             <li class="nav-item mb-2">
-                <a class="nav-link bg-primary" href="/Admin/Table/Index">
+                <a class="nav-link bg-primary" asp-area="Admin" asp-controller="Table" asp-action="Index">
                     <span data-feather="grid"></span>
                     Masa yönetimi
                 </a>
             </li>
             <li class="nav-item mb-5 ms-3">
-                <a class="nav-link text-primary" style="font-weight: 500;" href="/Admin/Table/Index?filterEmpty=true">
+                <a class="nav-link text-primary" style="font-weight: 500;" asp-area="Admin" asp-controller="Table" asp-action="Index" asp-route-filterEmpty="true">
                     <i class="fa fa-filter"></i>
                     Sadece Boş Masalar
                 </a>
@@ -17,57 +17,68 @@
             @if (User.IsInRole("Admin"))
             {
                 <li class="nav-item mb-5">
-                    <a class="nav-link bg-danger" href="/Admin/Admin/Index">
+                    <a class="nav-link bg-danger" asp-area="Admin" asp-controller="Admin" asp-action="Index">
                         <span data-feather="package"></span>
                         Ürünler
                     </a>
                 </li>
                 <li class="nav-item mb-5">
-                    <a class="nav-link bg-success" href="/Admin/Admin/Categories">
+                    <a class="nav-link bg-success" asp-area="Admin" asp-controller="Admin" asp-action="Categories">
                         <span data-feather="list"></span>
                         Kategoriler
                     </a>
                 </li>
                 <li class="nav-item mb-5">
-                    <a class="nav-link bg-secondary" href="/Admin/Report/DailyReport">
+                    <a class="nav-link bg-secondary" asp-area="Admin" asp-controller="Report" asp-action="DailyReport">
                         <span data-feather="bar-chart"></span>
                         Raporlar
                     </a>
                 </li>
             }
-
-            <li class="nav-item mb-5">
-                <a class="nav-link bg-warning text-white rounded" href="/Home/Index">
+            @if (User.IsInRole("Admin"))
+            {
+                <li class="nav-item mb-5">
+                <a class="nav-link bg-warning text-white rounded" asp-area="" asp-controller="Home" asp-action="Index">
                     <span data-feather="arrow-left"></span>
                     Web Sitesine Dön
                 </a>
             </li>
+            }
+            @if (User.IsInRole("Waiter"))
+            {
+                <li class="nav-item mb-5">
+                <a class="nav-link bg-warning text-white rounded" asp-area="" asp-controller="Home" asp-action="Index">
+                    <span data-feather="arrow-left"></span>
+                    Web Sitesine Dön
+                </a>
+            </li>
+            }
         </ul>
     </div>
 </nav>
 
 <!-- Mobile Bottom Navigation -->
 <nav class="mobile-bottom-nav">
-    <a class="nav-link text-primary" href="/Admin/Table/Index">
+    <a class="nav-link text-primary" asp-area="Admin" asp-controller="Table" asp-action="Index">
         <i class="fa fa-th-large" style="font-size: 1.25rem;"></i>
         <span>Masalar</span>
     </a>
-    <a class="nav-link text-success" href="/Admin/Table/Index?filterEmpty=true">
+    <a class="nav-link text-success" asp-area="Admin" asp-controller="Table" asp-action="Index" asp-route-filterEmpty="true">
         <i class="fa fa-check-circle" style="font-size: 1.25rem;"></i>
         <span>Boş</span>
     </a>
     @if (User.IsInRole("Admin"))
     {
-        <a class="nav-link" href="/Admin/Admin/Index">
+        <a class="nav-link" asp-area="Admin" asp-controller="Admin" asp-action="Index">
             <i class="fa fa-cutlery" style="font-size: 1.25rem;"></i>
             <span>Ürünler</span>
         </a>
-        <a class="nav-link" href="/Admin/Report/DailyReport">
+        <a class="nav-link" asp-area="Admin" asp-controller="Report" asp-action="DailyReport">
             <i class="fa fa-line-chart" style="font-size: 1.25rem;"></i>
             <span>Rapor</span>
         </a>
     }
-    <a class="nav-link text-warning" href="/Home/Index">
+    <a class="nav-link text-warning" asp-area="" asp-controller="Home" asp-action="Index">
         <i class="fa fa-home" style="font-size: 1.25rem;"></i>
         <span>Site</span>
     </a>

@@ -139,7 +139,7 @@ namespace RestaurantApp.Web.Controllers
             {
                 var user = await _userManager.FindByEmailAsync(model.Email); // Email'e göre kullanıcıyı buluyoruz
                 if (user != null)
-                {  
+                {
                     if (!await _userManager.IsEmailConfirmedAsync(user))
                     {
                         ModelState.AddModelError(string.Empty,
@@ -154,7 +154,17 @@ namespace RestaurantApp.Web.Controllers
                         {
                             return RedirectToAction("Index", "Admin", new { area = "Admin" });
                         }
-                        return RedirectToAction("Index", "Home"); // User rolündeki kullanıcıları ana sayfaya yönlendiriyoruz
+                        string currentRole = roles.FirstOrDefault();
+                        switch (currentRole)
+                        {
+                            case "Admin":
+                                return RedirectToAction("Index", "Admin");
+                            case "User":
+                                return RedirectToAction("Index", "Home");
+                            case "Waiter":
+                                return RedirectToAction("WaiterOrder", "Waiter");
+                        }
+                        // User rolündeki kullanıcıları ana sayfaya yönlendiriyoruz
                     }
                 }
             }

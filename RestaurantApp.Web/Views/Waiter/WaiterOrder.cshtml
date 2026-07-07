@@ -1,0 +1,922 @@
+@model IEnumerable<RestaurantApp.Common.Models.Product>
+@{
+    ViewData["Title"] = "Garson POS";
+    var tableId = ViewBag.TableId != null ? (int)ViewBag.TableId : 0;
+    var tables = (IEnumerable<RestaurantApp.Common.Models.Table>)ViewBag.Tables;
+    var categories = Model
+        .Where(p => p.Category != null)
+        .Select(p => p.Category!)
+        .GroupBy(c => c.Id)
+        .Select(g => g.First())
+        .OrderBy(c => c.SortOrder)
+        .ToList();
+
+    var activeTable = tables.FirstOrDefault(t => t.Id == tableId);
+    var activeTableText = activeTable != null ? $"Masa {activeTable.TableNumber}" : "Masa Seçin";
+}
+
+@section Styles {
+<style>
+    /* ═══════════════════════════════════════════════
+       NATIVE POS APP STYLES (MOBILE-FIRST)
+       ═══════════════════════════════════════════════ */
+    :root {
+        /* LIGHT THEME (Varsayılan Açık Tema) */
+        --pos-bg: #f8f9fa;
+        --pos-surface: #ffffff;
+        --pos-border: #e2e8f0;
+        --pos-text: #1e293b;
+        --pos-text-muted: #64748b;
+        --pos-primary: #d97706; /* Koyu Amber */
+        --pos-danger: #ef4444;
+        --pos-success: #10b981;
+        --pos-sheet-bg: #ffffff;
+        --pos-input-bg: #f1f5f9;
+        --pos-qty-bg: #f1f5f9;
+        --pos-qty-active: #e2e8f0;
+        --pos-radius: 16px;
+        --pos-radius-sm: 10px;
+    }
+
+    [data-theme="dark"], [data-theme="dark"] .pos-app {
+        /* DARK THEME */
+        --pos-bg: #121212;
+        --pos-surface: #1e1e1e;
+        --pos-border: #2c2c2c;
+        --pos-text: #ffffff;
+        --pos-text-muted: #a0a0a0;
+        --pos-primary: #f59e0b; /* Amber */
+        --pos-danger: #ef4444;
+        --pos-success: #10b981;
+        --pos-sheet-bg: #1a1a1a;
+        --pos-input-bg: #000000;
+        --pos-qty-bg: #000000;
+        --pos-qty-active: rgba(255,255,255,0.1);
+    }
+
+    /* Layout uyumu - Header'ı geri getirdik (Kullanıcı isteği: Admin'e dönüş ve tema butonları) */
+    .footer_section, .mobile-bottom-nav {
+        display: none !important;
+    }
+
+    /* Full screen setup - Layout ile uyumlu olması için esnekleştirildi */
+    body {
+        background-color: #121212 !important; /* PC'de yan boşluklar için koyu arka plan */
+        color: var(--pos-text);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    .pos-d-none { display: none !important; }
+
+    .pos-app {
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - 70px); /* Header yüksekliğini düş */
+        height: calc(100dvh - 70px);
+        width: 100%;
+        max-width: 480px; /* Masaüstünde mobil uygulama görünümü için sınır */
+        margin: 0 auto;
+        position: relative;
+        background: var(--pos-bg);
+        box-shadow: 0 0 25px rgba(0,0,0,0.5); /* Ortalı uygulamaya hafif derinlik */
+    }
+
+    /* ── HEADER (Sticky) ────────────────────────── */
+    .pos-header {
+        flex-shrink: 0;
+        background: var(--pos-surface);
+        padding: env(safe-area-inset-top, 10px) 16px 12px 16px;
+        border-bottom: 1px solid var(--pos-border);
+        z-index: 10;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .pos-top-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+        padding-top: 10px;
+    }
+
+    .pos-table-trigger {
+        background: rgba(255,255,255,0.08);
+        border: 1px solid var(--pos-border);
+        color: var(--pos-text);
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-weight: 700;
+        font-size: 0.95rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: background 0.2s;
+    }
+    .pos-table-trigger:active { background: rgba(255,255,255,0.12); }
+    .pos-table-trigger .status-dot {
+        width: 8px; height: 8px; border-radius: 50%;
+        background: var(--pos-text-muted);
+    }
+    .pos-table-trigger.occupied .status-dot { background: var(--pos-danger); }
+    .pos-table-trigger.empty .status-dot { background: var(--pos-success); }
+
+    .pos-home-btn {
+        color: var(--pos-text-muted);
+        text-decoration: none;
+        font-size: 1.2rem;
+        padding: 8px;
+    }
+
+    .pos-search {
+        position: relative;
+        margin-bottom: 12px;
+    }
+    .pos-search input {
+        width: 100%;
+        background: var(--pos-input-bg);
+        border: 1px solid var(--pos-border);
+        color: var(--pos-text);
+        padding: 12px 16px 12px 40px;
+        border-radius: var(--pos-radius-sm);
+        font-size: 0.95rem;
+        outline: none;
+    }
+    .pos-search input:focus { border-color: var(--pos-primary); }
+    .pos-search i {
+        position: absolute;
+        left: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--pos-text-muted);
+    }
+
+    .pos-categories {
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+        padding-bottom: 4px;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+    }
+    .pos-categories::-webkit-scrollbar { display: none; }
+    .pos-cat-btn {
+        background: transparent;
+        border: 1px solid var(--pos-border);
+        color: var(--pos-text-muted);
+        padding: 6px 16px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        white-space: nowrap;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .pos-cat-btn.active {
+        background: var(--pos-text);
+        color: var(--pos-surface);
+        border-color: var(--pos-text);
+    }
+
+    /* ── CONTENT (Scrollable) ───────────────────── */
+    .pos-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 12px 16px calc(80px + env(safe-area-inset-bottom, 20px)) 16px; /* Room for cart */
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .pos-product-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .pos-product {
+        display: flex;
+        align-items: center;
+        background: var(--pos-surface);
+        border: 1px solid var(--pos-border);
+        border-radius: var(--pos-radius-sm);
+        padding: 10px;
+        gap: 12px;
+        transition: border-color 0.2s, background 0.2s;
+    }
+    .pos-product.active {
+        border-color: var(--pos-primary);
+        background: rgba(245, 158, 11, 0.05); /* Slight amber tint */
+        border-left: 4px solid var(--pos-primary);
+        padding-left: 7px;
+    }
+    .pos-product.unavailable { opacity: 0.4; pointer-events: none; }
+
+    .pos-prod-img {
+        width: 48px;
+        height: 48px;
+        border-radius: 8px;
+        object-fit: cover;
+        background: var(--pos-input-bg);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--pos-text-muted);
+    }
+    .pos-prod-info {
+        flex: 1;
+        min-width: 0;
+    }
+    .pos-prod-name {
+        font-size: 0.9rem;
+        font-weight: 600;
+        margin: 0 0 4px 0;
+        line-height: 1.2;
+        word-break: break-word;
+    }
+    .pos-prod-price {
+        font-size: 0.85rem;
+        color: var(--pos-primary);
+        font-weight: 700;
+        margin: 0;
+    }
+
+    .pos-qty {
+        display: flex;
+        align-items: center;
+        background: var(--pos-qty-bg);
+        border-radius: 24px;
+        padding: 2px;
+        border: 1px solid var(--pos-border);
+    }
+    .pos-qty button {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        border: none;
+        background: transparent;
+        color: var(--pos-text);
+        font-size: 1.2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        /* Mobile touch optimization */
+        touch-action: manipulation;
+    }
+    .pos-qty button:active { background: var(--pos-qty-active); }
+    .pos-qty span {
+        width: 24px;
+        text-align: center;
+        font-weight: 700;
+        font-size: 0.95rem;
+    }
+
+    .pos-no-results {
+        text-align: center;
+        padding: 40px 20px;
+        color: var(--pos-text-muted);
+        display: none;
+    }
+
+    /* ── BOTTOM CART SUMMARY (Always visible) ───── */
+    .pos-cart-summary {
+        position: fixed;
+        bottom: 0;
+        left: 50%;
+        transform: translate(-50%, 100%);
+        width: 100%;
+        max-width: 480px;
+        background: var(--pos-danger);
+        color: #fff;
+        padding: 16px 20px;
+        padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+        z-index: 9999;
+        box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .pos-cart-summary.visible { transform: translate(-50%, 0); }
+    .pos-cart-summary:active { background: #dc2626; } /* darker red */
+    
+    .pcs-left { display: flex; align-items: center; gap: 12px; }
+    .pcs-count {
+        background: #fff;
+        color: var(--pos-danger);
+        font-weight: 800;
+        width: 28px; height: 28px;
+        border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 0.9rem;
+    }
+    .pcs-text { font-weight: 700; font-size: 1.05rem; }
+    .pcs-total { font-weight: 800; font-size: 1.15rem; }
+
+    /* ── BOTTOM SHEETS (Modal) ──────────────────── */
+    .pos-overlay {
+        position: fixed;
+        top: 0; left: 50%; bottom: 0;
+        transform: translateX(-50%);
+        width: 100%;
+        max-width: 480px;
+        background: rgba(0,0,0,0.6);
+        z-index: 10000;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s;
+        backdrop-filter: blur(2px);
+    }
+    .pos-overlay.active { opacity: 1; pointer-events: auto; }
+
+    .pos-bottom-sheet {
+        position: fixed;
+        bottom: 0; left: 50%; 
+        width: 100%;
+        max-width: 480px;
+        background: var(--pos-sheet-bg);
+        border-radius: 24px 24px 0 0;
+        z-index: 10001;
+        transform: translate(-50%, 100%);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex;
+        flex-direction: column;
+        max-height: 85vh;
+    }
+    .pos-bottom-sheet.active { transform: translate(-50%, 0); }
+    
+    .pbs-handle {
+        width: 40px; height: 5px;
+        background: #444;
+        border-radius: 3px;
+        margin: 12px auto;
+    }
+    .pbs-header {
+        padding: 0 20px 16px 20px;
+        border-bottom: 1px solid var(--pos-border);
+        display: flex; justify-content: space-between; align-items: center;
+    }
+    .pbs-title { font-size: 1.1rem; font-weight: 700; margin: 0; }
+    .pbs-close {
+        background: var(--pos-input-bg); border: none; color: var(--pos-text);
+        width: 32px; height: 32px; border-radius: 50%;
+        cursor: pointer; display: flex; align-items: center; justify-content: center;
+    }
+
+    /* Table Sheet Specifics */
+    .pbs-content-tables {
+        padding: 20px;
+        overflow-y: auto;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+        gap: 12px;
+        padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+    }
+    .pos-tbl-btn {
+        background: var(--pos-input-bg);
+        border: 2px solid var(--pos-border);
+        border-radius: var(--pos-radius-sm);
+        padding: 12px 4px;
+        color: var(--pos-text);
+        font-weight: 700;
+        font-size: 1rem;
+        cursor: pointer;
+        display: flex; flex-direction: column; align-items: center; gap: 4px;
+    }
+    .pos-tbl-btn.empty { border-color: var(--pos-success); color: var(--pos-success); }
+    .pos-tbl-btn.occupied { border-color: var(--pos-danger); color: var(--pos-danger); }
+    .pos-tbl-btn.active { background: var(--pos-text); color: var(--pos-surface); border-color: var(--pos-text); }
+    .pos-tbl-lbl { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; }
+
+    /* Cart Sheet Specifics */
+    .pbs-content-cart {
+        padding: 0;
+        overflow-y: auto;
+        flex: 1;
+    }
+    .pos-cart-list { margin: 0; padding: 0; list-style: none; }
+    .pos-cart-item {
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--pos-border);
+    }
+    .pci-row {
+        display: flex; justify-content: space-between; align-items: center;
+    }
+    .pci-name { font-weight: 600; font-size: 0.95rem; flex: 1; }
+    .pci-right { display: flex; align-items: center; gap: 16px; }
+    .pci-total { font-weight: 700; color: var(--pos-primary); }
+    
+    .pci-actions { margin-top: 10px; display: flex; gap: 10px; }
+    .pci-note-btn {
+        background: transparent; border: 1px dashed var(--pos-text-muted);
+        color: var(--pos-text-muted); padding: 6px 12px; border-radius: 16px;
+        font-size: 0.75rem; cursor: pointer; flex: 1; text-align: left;
+    }
+    .pci-note-input-area {
+        margin-top: 8px; display: none;
+    }
+    .pci-note-input-area.active { display: block; }
+    .pci-note-input {
+        width: 100%; background: var(--pos-input-bg); border: 1px solid var(--pos-border);
+        color: var(--pos-text); padding: 8px 12px; border-radius: 8px; font-size: 0.85rem; outline: none;
+    }
+    .pci-note-input:focus { border-color: var(--pos-primary); }
+
+    .pbs-cart-footer {
+        padding: 16px 20px calc(16px + env(safe-area-inset-bottom, 0px)) 20px;
+        background: var(--pos-surface);
+        border-top: 1px solid var(--pos-border);
+    }
+    .pos-global-note {
+        width: 100%; background: var(--pos-input-bg); border: 1px solid var(--pos-border);
+        color: var(--pos-text); padding: 12px; border-radius: var(--pos-radius-sm);
+        font-size: 0.9rem; margin-bottom: 16px; resize: none; height: 50px; outline: none;
+    }
+    .pos-global-note:focus { border-color: var(--pos-primary); }
+    
+    .pos-submit-btn {
+        width: 100%; background: var(--pos-danger); color: #fff;
+        border: none; border-radius: var(--pos-radius-sm);
+        padding: 16px; font-size: 1.1rem; font-weight: 800;
+        cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 10px;
+        transition: transform 0.1s, opacity 0.2s;
+    }
+    .pos-submit-btn:active { transform: scale(0.98); }
+    .pos-submit-btn:disabled { opacity: 0.5; pointer-events: none; }
+
+    /* ── TOAST & SPINNER ────────────────────────── */
+    .pos-toast {
+        position: fixed; top: 20px; left: 50%; transform: translate(-50%, -150%);
+        background: #333; color: #fff; padding: 12px 24px; border-radius: 30px;
+        font-weight: 600; font-size: 0.9rem; z-index: 10005;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        white-space: nowrap;
+    }
+    .pos-toast.show { transform: translate(-50%, 0); }
+    .pos-toast.success { background: var(--pos-success); }
+    .pos-toast.error { background: var(--pos-danger); }
+
+    .spinner {
+        width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.3);
+        border-top-color: #fff; border-radius: 50%;
+        animation: spin 0.8s linear infinite; display: none;
+    }
+    @@keyframes spin { 100% { transform: rotate(360deg); } }
+
+</style>
+}
+
+<div class="pos-app">
+    <!-- Overlay for Bottom Sheets -->
+    <div class="pos-overlay" id="posOverlay" onclick="BottomSheetManager.closeAll()"></div>
+
+    <!-- Toast Notification -->
+    <div class="pos-toast" id="posToast"></div>
+
+    <!-- HEADER -->
+    <div class="pos-header">
+        <div class="pos-top-bar">
+            <!-- Table Trigger -->
+            <div class="pos-table-trigger @(activeTable != null ? (activeTable.Status == RestaurantApp.Common.Enums.TableStatus.Empty ? "empty" : "occupied") : "")" 
+                 onclick="BottomSheetManager.open('tableSheet')">
+                <span class="status-dot"></span>
+                <span id="headerTableText">@activeTableText</span>
+                <i class="fa fa-chevron-down" style="font-size:0.75rem; margin-left:4px;"></i>
+            </div>
+            
+            <a asp-controller="Home" asp-action="Index" class="pos-home-btn"><i class="fa fa-home"></i></a>
+        </div>
+
+        <div class="pos-search">
+            <i class="fa fa-search"></i>
+            <input type="text" id="searchInput" placeholder="Ürün ara..." autocomplete="off" />
+        </div>
+
+        <div class="pos-categories" id="categoryContainer">
+            <button class="pos-cat-btn active" data-id="all">Tümü</button>
+            @foreach (var cat in categories)
+            {
+                <button class="pos-cat-btn" data-id="@cat.Id">@cat.Name</button>
+            }
+        </div>
+    </div>
+
+    <!-- SCROLLABLE PRODUCT LIST -->
+    <div class="pos-content" id="productContainer">
+        <div class="pos-product-list">
+            @foreach (var product in Model)
+            {
+                var unavailable = !product.IsAvailable;
+                <div class="pos-product @(unavailable ? "unavailable" : "")" 
+                     data-id="@product.Id" 
+                     data-cat="@product.CategoryId" 
+                     data-name="@product.Name" 
+                     data-price="@product.Price.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)">
+                    
+                    @if (!string.IsNullOrEmpty(product.ImageUrl))
+                    {
+                        <img src="~/images/@product.ImageUrl" alt="@product.Name" class="pos-prod-img" loading="lazy" />
+                    }
+                    else
+                    {
+                        <div class="pos-prod-img"><i class="fa fa-cutlery"></i></div>
+                    }
+
+                    <div class="pos-prod-info">
+                        <h3 class="pos-prod-name">@product.Name</h3>
+                        <p class="pos-prod-price">₺@product.Price.ToString("N2")</p>
+                    </div>
+
+                    @if (!unavailable)
+                    {
+                        <div class="pos-qty">
+                            <button onclick="CartManager.changeQty(@product.Id, -1)">−</button>
+                            <span id="qty-@product.Id">0</span>
+                            <button onclick="CartManager.changeQty(@product.Id, 1)">+</button>
+                        </div>
+                    }
+                    else
+                    {
+                        <span style="font-size:0.75rem; color:var(--pos-danger); font-weight:700;">Tükendi</span>
+                    }
+                </div>
+            }
+        </div>
+        <div class="pos-no-results" id="noResults">Ürün bulunamadı</div>
+    </div>
+
+    <!-- BOTTOM SUMMARY (Collapsed Cart) -->
+    <div class="pos-cart-summary" id="cartSummary" onclick="BottomSheetManager.open('cartSheet')">
+        <div class="pcs-left">
+            <div class="pcs-count" id="summaryCount">0</div>
+            <div class="pcs-text">Sepet</div>
+        </div>
+        <div class="pcs-total" id="summaryTotal">₺0,00</div>
+    </div>
+
+    <!-- TABLE SELECTOR BOTTOM SHEET -->
+    <div class="pos-bottom-sheet" id="tableSheet">
+        <div class="pbs-handle"></div>
+        <div class="pbs-header" style="align-items: flex-start;">
+            <div>
+                <h2 class="pbs-title">Masa Seçin</h2>
+                <label style="display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 0.85rem; color: var(--pos-text-muted); cursor: pointer;">
+                    <input type="checkbox" id="chkEmptyTables" style="transform: scale(1.1);" />
+                    Sadece boş masaları göster
+                </label>
+            </div>
+            <button class="pbs-close" onclick="BottomSheetManager.closeAll()"><i class="fa fa-times"></i></button>
+        </div>
+        <div class="pbs-content-tables">
+            @foreach (var table in tables)
+            {
+                var isEmpty = table.Status == RestaurantApp.Common.Enums.TableStatus.Empty;
+                var cls = isEmpty ? "empty" : "occupied";
+                var activeCls = table.Id == tableId ? "active" : "";
+                <button class="pos-tbl-btn @cls @activeCls" data-table-id="@table.Id" onclick="UIManager.setTable(@table.Id, '@table.TableNumber', '@cls')">
+                    @table.TableNumber
+                    <span class="pos-tbl-lbl">@(isEmpty ? "Boş" : "Dolu")</span>
+                </button>
+            }
+        </div>
+    </div>
+
+    <!-- CART DETAILS BOTTOM SHEET -->
+    <div class="pos-bottom-sheet" id="cartSheet">
+        <div class="pbs-handle"></div>
+        <div class="pbs-header">
+            <h2 class="pbs-title">Sepet Detayı</h2>
+            <button class="pbs-close" onclick="BottomSheetManager.closeAll()"><i class="fa fa-times"></i></button>
+        </div>
+        <div class="pbs-content-cart">
+            <ul class="pos-cart-list" id="cartList">
+                <!-- Cart items rendered here via JS -->
+            </ul>
+        </div>
+        <div class="pbs-cart-footer">
+            <textarea class="pos-global-note" id="globalNote" placeholder="Genel sipariş notu (isteğe bağlı)..."></textarea>
+            <button class="pos-submit-btn" id="submitBtn" onclick="ApiManager.submitOrder()">
+                <div class="spinner" id="submitSpinner"></div>
+                <span id="submitText">Siparişi Gönder (₺<span id="submitTotal">0,00</span>)</span>
+            </button>
+        </div>
+    </div>
+
+</div>
+
+@section Scripts {
+<script>
+    /**
+     * GARSON POS - NATIVE APP ARCHITECTURE
+     */
+
+    // --- STATE ---
+    const State = {
+        tableId: @tableId,
+        cart: {}, // { id: { name, price, qty, note } }
+        activeCat: 'all',
+        searchQuery: ''
+    };
+
+    // --- DOM CACHE ---
+    const DOM = {
+        products: document.querySelectorAll('.pos-product'),
+        qtySpans: {}, // Populated dynamically
+        cartSummary: document.getElementById('cartSummary'),
+        summaryCount: document.getElementById('summaryCount'),
+        summaryTotal: document.getElementById('summaryTotal'),
+        cartList: document.getElementById('cartList'),
+        submitBtn: document.getElementById('submitBtn'),
+        submitTotal: document.getElementById('submitTotal'),
+        submitText: document.getElementById('submitText'),
+        submitSpinner: document.getElementById('submitSpinner'),
+        globalNote: document.getElementById('globalNote'),
+        headerTableText: document.getElementById('headerTableText'),
+        tableTrigger: document.querySelector('.pos-table-trigger'),
+        tableBtns: document.querySelectorAll('.pos-tbl-btn'),
+        noResults: document.getElementById('noResults'),
+        searchInput: document.getElementById('searchInput'),
+        catBtns: document.querySelectorAll('.pos-cat-btn'),
+        overlay: document.getElementById('posOverlay'),
+        sheets: {
+            tableSheet: document.getElementById('tableSheet'),
+            cartSheet: document.getElementById('cartSheet')
+        },
+        toast: document.getElementById('posToast')
+    };
+
+    // Pre-cache qty spans for fast updates
+    DOM.products.forEach(p => {
+        const id = p.dataset.id;
+        const span = p.querySelector(`#qty-${id}`);
+        if(span) DOM.qtySpans[id] = span;
+    });
+
+    // --- UTILS ---
+    const Utils = {
+        formatCurrency: (val) => val.toFixed(2).replace('.', ','),
+        debounce: (func, wait) => {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => { clearTimeout(timeout); func(...args); };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+    };
+
+    // --- TOAST MANAGER ---
+    const ToastManager = {
+        show: (msg, type = 'success') => {
+            DOM.toast.textContent = msg;
+            DOM.toast.className = `pos-toast ${type} show`;
+            setTimeout(() => DOM.toast.classList.remove('show'), 3000);
+        }
+    };
+
+    // --- BOTTOM SHEET MANAGER ---
+    const BottomSheetManager = {
+        activeSheet: null,
+        open: (sheetId) => {
+            if(BottomSheetManager.activeSheet) BottomSheetManager.closeAll();
+            DOM.overlay.classList.add('active');
+            DOM.sheets[sheetId].classList.add('active');
+            BottomSheetManager.activeSheet = sheetId;
+        },
+        closeAll: () => {
+            DOM.overlay.classList.remove('active');
+            Object.values(DOM.sheets).forEach(s => s.classList.remove('active'));
+            BottomSheetManager.activeSheet = null;
+        }
+    };
+
+    // --- CART MANAGER ---
+    const CartManager = {
+        changeQty: (id, delta) => {
+            // Find product data from DOM
+            const productEl = document.querySelector(`.pos-product[data-id="${id}"]`);
+            if(!productEl) return;
+            
+            const name = productEl.dataset.name;
+            const price = parseFloat(productEl.dataset.price);
+
+            let item = State.cart[id] || { name, price, qty: 0, note: '' };
+            item.qty += delta;
+
+            if (item.qty <= 0) {
+                delete State.cart[id];
+                item.qty = 0;
+            } else {
+                State.cart[id] = item;
+            }
+
+            // Fast DOM Update for Product Card
+            if(DOM.qtySpans[id]) DOM.qtySpans[id].textContent = item.qty;
+            if(item.qty > 0) productEl.classList.add('active');
+            else productEl.classList.remove('active');
+
+            UIManager.updateCart();
+        },
+        updateNote: (id, note) => {
+            if(State.cart[id]) State.cart[id].note = note;
+        },
+        toggleNoteInput: (id) => {
+            const area = document.getElementById(`note-area-${id}`);
+            if(area) area.classList.toggle('active');
+        }
+    };
+
+    // --- UI MANAGER ---
+    const UIManager = {
+        init: () => {
+            // Empty Tables Toggle Binding
+            const chkEmpty = document.getElementById('chkEmptyTables');
+            if (chkEmpty) {
+                chkEmpty.addEventListener('change', (e) => {
+                    UIManager.toggleEmptyTables(e.target.checked);
+                });
+            }
+
+            // Event Delegation for Categories
+            DOM.catBtns.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    DOM.catBtns.forEach(b => b.classList.remove('active'));
+                    e.target.classList.add('active');
+                    State.activeCat = e.target.dataset.id;
+                    UIManager.filterProducts();
+                });
+            });
+
+            // Debounced Search
+            DOM.searchInput.addEventListener('input', Utils.debounce((e) => {
+                State.searchQuery = e.target.value.toLowerCase().trim();
+                UIManager.filterProducts();
+            }, 300));
+        },
+        filterProducts: () => {
+            let visible = 0;
+            DOM.products.forEach(p => {
+                const name = p.dataset.name.toLowerCase();
+                const cat = p.dataset.cat;
+                const matchSearch = name.includes(State.searchQuery);
+                const matchCat = State.activeCat === 'all' || cat === State.activeCat;
+                
+                if (matchSearch && matchCat) {
+                    p.style.display = 'flex';
+                    visible++;
+                } else {
+                    p.style.display = 'none';
+                }
+            });
+            DOM.noResults.style.display = visible === 0 ? 'block' : 'none';
+        },
+        setTable: (id, number, statusCls) => {
+            State.tableId = id;
+            DOM.headerTableText.textContent = `Masa ${number}`;
+            DOM.tableTrigger.className = `pos-table-trigger ${statusCls}`;
+            
+            // Highlight button
+            DOM.tableBtns.forEach(b => b.classList.remove('active'));
+            const btn = Array.from(DOM.tableBtns).find(b => b.dataset.tableId == id);
+            if(btn) btn.classList.add('active');
+
+            BottomSheetManager.closeAll();
+            
+            // Update URL without reload
+            const url = new URL(window.location);
+            url.searchParams.set('tableId', id);
+            window.history.replaceState({}, '', url);
+
+            UIManager.checkSubmitState();
+        },
+        toggleEmptyTables: (onlyEmpty) => {
+            const tableButtons = document.querySelectorAll('.pos-tbl-btn');
+            tableButtons.forEach(btn => {
+                if (onlyEmpty && btn.classList.contains('occupied')) {
+                    btn.classList.add('pos-d-none');
+                } else {
+                    btn.classList.remove('pos-d-none');
+                }
+            });
+        },
+        updateCart: () => {
+            let totalQty = 0;
+            let totalPrice = 0;
+            let html = '';
+
+            const keys = Object.keys(State.cart);
+            keys.forEach(id => {
+                const item = State.cart[id];
+                totalQty += item.qty;
+                const itemTotal = item.qty * item.price;
+                totalPrice += itemTotal;
+
+                html += `
+                    <li class="pos-cart-item">
+                        <div class="pci-row">
+                            <div class="pci-name">${item.name} <span style="color:var(--pos-text-muted); font-size:0.8rem;">x${item.qty}</span></div>
+                            <div class="pci-right">
+                                <div class="pci-total">₺${Utils.formatCurrency(itemTotal)}</div>
+                                <div class="pos-qty" style="transform: scale(0.85); transform-origin: right;">
+                                    <button onclick="CartManager.changeQty('${id}', -1)">−</button>
+                                    <span>${item.qty}</span>
+                                    <button onclick="CartManager.changeQty('${id}', 1)">+</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="pci-actions">
+                            <button class="pci-note-btn" onclick="CartManager.toggleNoteInput('${id}')">
+                                <i class="fa fa-edit"></i> ${item.note ? 'Notu Düzenle' : 'Not Ekle'}
+                            </button>
+                        </div>
+                        <div class="pci-note-input-area ${item.note ? 'active' : ''}" id="note-area-${id}">
+                            <input type="text" class="pci-note-input" placeholder="Örn: Acılı olsun..." 
+                                   value="${item.note}" onchange="CartManager.updateNote('${id}', this.value)" />
+                        </div>
+                    </li>
+                `;
+            });
+
+            DOM.cartList.innerHTML = html || '<div style="padding:40px 20px; text-align:center; color:var(--pos-text-muted);">Sepetiniz boş.</div>';
+            
+            DOM.summaryCount.textContent = totalQty;
+            DOM.summaryTotal.textContent = `₺${Utils.formatCurrency(totalPrice)}`;
+            DOM.submitTotal.textContent = Utils.formatCurrency(totalPrice);
+
+            // Toggle bottom summary visibility
+            if (totalQty > 0) DOM.cartSummary.classList.add('visible');
+            else {
+                DOM.cartSummary.classList.remove('visible');
+                if(BottomSheetManager.activeSheet === 'cartSheet') BottomSheetManager.closeAll();
+            }
+
+            UIManager.checkSubmitState();
+        },
+        checkSubmitState: () => {
+            const hasItems = Object.keys(State.cart).length > 0;
+            const hasTable = State.tableId > 0;
+            DOM.submitBtn.disabled = !(hasItems && hasTable);
+        }
+    };
+
+    // --- API MANAGER ---
+    const ApiManager = {
+        submitOrder: async () => {
+            if (State.tableId <= 0) {
+                ToastManager.show('Lütfen önce masa seçin!', 'error');
+                BottomSheetManager.open('tableSheet');
+                return;
+            }
+
+            // Set loading state
+            DOM.submitBtn.disabled = true;
+            DOM.submitText.style.display = 'none';
+            DOM.submitSpinner.style.display = 'block';
+
+            const globalNote = DOM.globalNote.value.trim();
+            const items = Object.keys(State.cart).map(id => {
+                const c = State.cart[id];
+                let combined = c.note;
+                if(globalNote) combined = combined ? combined + " | Genel: " + globalNote : globalNote;
+                return {
+                    productId: parseInt(id),
+                    quantity: c.qty,
+                    unitPrice: c.price,
+                    notes: combined || null
+                };
+            });
+
+            try {
+                const res = await fetch('/api/waiter/place-order', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tableId: State.tableId, items: items })
+                });
+
+                if (res.ok) {
+                    ToastManager.show('Sipariş başarıyla iletildi!', 'success');
+                    BottomSheetManager.closeAll();
+                    setTimeout(() => window.location.reload(), 1500);
+                } else {
+                    const err = await res.text();
+                    ToastManager.show('Hata: ' + err, 'error');
+                    DOM.submitBtn.disabled = false;
+                }
+            } catch (e) {
+                ToastManager.show('Bağlantı hatası!', 'error');
+                DOM.submitBtn.disabled = false;
+            } finally {
+                DOM.submitText.style.display = 'block';
+                DOM.submitSpinner.style.display = 'none';
+            }
+        }
+    };
+
+    // Boot
+    document.addEventListener('DOMContentLoaded', () => {
+        UIManager.init();
+        UIManager.updateCart();
+    });
+
+</script>
+}

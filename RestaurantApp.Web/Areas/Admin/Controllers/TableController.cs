@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Identity;
 namespace RestaurantApp.Web.Areas.Admin.Controllers
 {
     [Area("Admin")]
-    [Authorize(Roles = "Admin, Garson")]
+    [Authorize(Roles = "Admin, Waiter")]
     public class TableController : Controller
     {
         private readonly ITableRepository _tableRepository;
@@ -30,9 +30,16 @@ namespace RestaurantApp.Web.Areas.Admin.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(bool filterEmpty = false)
         {
             var tables = await _tableRepository.GetAllTablesAsync();
+            
+            if (filterEmpty)
+            {
+                tables = tables.Where(t => t.Status == TableStatus.Empty).ToList();
+                ViewBag.FilterEmpty = true;
+            }
+
             return View(tables);
         }
 
@@ -81,13 +88,13 @@ namespace RestaurantApp.Web.Areas.Admin.Controllers
             return View(table);
         }
 
-        [HttpGet]
+        [HttpGet, Authorize(Roles = "Admin")]
         public IActionResult Create()
         {
             return View();
         }
 
-        [HttpPost]
+        [HttpPost, Authorize(Roles = "Admin")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(string tableNumber)
         {
@@ -148,7 +155,7 @@ namespace RestaurantApp.Web.Areas.Admin.Controllers
             return RedirectToAction(nameof(Details), new { id = tableId });
         }
 
-        [HttpPost]
+        [HttpPost, Authorize(Roles = "Admin")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CloseTable(int id)
         {
@@ -168,7 +175,7 @@ namespace RestaurantApp.Web.Areas.Admin.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        [HttpPost]
+        [HttpPost, Authorize(Roles = "Admin")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Delete(int id)
         {

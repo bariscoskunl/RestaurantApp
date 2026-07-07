@@ -32,6 +32,11 @@ namespace RestaurantApp.Web.Controllers
         }
         public async Task<IActionResult> Index()
         {
+            if (User.IsInRole("Waiter"))
+            {
+                return RedirectToAction("WaiterOrder", "Waiter");
+            }
+
             var products = await _productRepository.GetAllProductsAsync();
             var categories = await _categoryRepository.GetActiveCategoriesAsync();           
 

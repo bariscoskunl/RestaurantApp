@@ -1,4 +1,4 @@
-﻿@{
+@{
     ViewData["Title"] = "Access Denied";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
@@ -29,7 +29,7 @@
         <div class="card-body">
             <h1 class="card-title text-danger"><i class="fa fa-exclamation-triangle" aria-hidden="true"></i> Access Denied</h1>
             <p class="card-text">You do not have permission to view this page.</p>
-            <a href="/Account/Login" class="btn btn-primary btn-login">Login</a>
+            <a asp-controller="Account" asp-action="Login" class="btn btn-primary btn-login">Login</a>
         </div>
     </div>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>

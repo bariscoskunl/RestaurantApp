@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using RestaurantApp.Common.Enums;
 using RestaurantApp.Common.Models;
@@ -9,20 +9,29 @@ using System.Security.Claims;
 
 namespace RestaurantApp.Web.Controllers
 {
-    [Authorize(Roles = "Garson")]
-    [Route("api/waiter")]
-    [ApiController]
-    public class WaiterController : ControllerBase
+    [Authorize(Roles = "Waiter, Admin")]
+    public class WaiterController : Controller
     {
         private readonly ITableRepository _tableRepository;
         private readonly IOrderRepository _orderRepository;
+        private readonly IProductRepository _productRepository;
 
-        public WaiterController(ITableRepository tableRepository, IOrderRepository orderRepository)
+        public WaiterController(ITableRepository tableRepository, IOrderRepository orderRepository, IProductRepository productRepository)
         {
-            _tableRepository= tableRepository;
+            _tableRepository = tableRepository;
             _orderRepository = orderRepository;
+            _productRepository = productRepository;
         }
-        [HttpPost("place-order")]
+
+        [HttpGet]
+        public async Task<IActionResult> WaiterOrder(int? tableId)
+        {
+            ViewBag.TableId = tableId ?? 0;
+            ViewBag.Tables = await _tableRepository.GetAllTablesAsync();
+            return View(await _productRepository.GetAllProductsAsync());
+        }
+
+        [HttpPost("api/waiter/place-order")]
         public async Task<IActionResult> PlaceOrder([FromBody] PlaceOrderDto request)
         {
             var table = await _tableRepository.GetTableByIdAsync(request.TableId);

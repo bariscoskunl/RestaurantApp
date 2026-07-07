@@ -23,7 +23,7 @@
 
                 <div class="d-flex align-items-center mb-3">
                     <h2 class="mb-0">Kategoriler</h2>
-                    <a href="/Admin/Admin/CreateCategory" class="btn btn-primary ms-auto">Kategori Ekle</a>
+                    <a asp-area="Admin" asp-controller="Admin" asp-action="CreateCategory" class="btn btn-primary ms-auto">Kategori Ekle</a>
                 </div>
 
                 <div class="table-responsive">
@@ -54,8 +54,8 @@
                                     </td>
                                     <td>
                                         <div class="d-flex gap-2">
-                                            <a href="/Admin/Admin/EditCategory/@category.Id" class="btn btn-sm btn-warning">Düzenle</a>
-                                            <a href="/Admin/Admin/DeleteCategory/@category.Id" class="btn btn-sm btn-danger">Sil</a>
+                                            <a asp-area="Admin" asp-controller="Admin" asp-action="EditCategory" asp-route-id="@category.Id" class="btn btn-sm btn-warning">Düzenle</a>
+                                            <a asp-area="Admin" asp-controller="Admin" asp-action="DeleteCategory" asp-route-id="@category.Id" class="btn btn-sm btn-danger">Sil</a>
                                         </div>
                                     </td>
                                 </tr>

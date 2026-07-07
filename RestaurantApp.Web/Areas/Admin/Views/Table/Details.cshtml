@@ -309,7 +309,7 @@
                                                     var orderRoles = ViewBag.OrderRoles as Dictionary<int, string>;
                                                     var roleName = orderRoles != null && orderRoles.ContainsKey(order.Id) ? orderRoles[order.Id] : "Müşteri";
 
-                                                    var roleBadgeColor = roleName == "Admin" ? "bg-danger" : (roleName == "Garson" ? "bg-warning text-dark" : "bg-info");
+                                                    var roleBadgeColor = roleName == "Admin" ? "bg-danger" : (roleName == "Waiter" ? "bg-warning text-dark" : "bg-info");
                                                     <span class="badge @roleBadgeColor ms-1">@roleName</span>
                                                 }
                                                 else

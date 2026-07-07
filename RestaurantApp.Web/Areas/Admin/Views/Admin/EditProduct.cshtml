@@ -20,7 +20,7 @@
             <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                     <h2>Ürün Düzenle</h2>
-                    <a href="/Admin/Admin/Index" class="btn btn-secondary">← Listeye Dön</a>
+                    <a asp-area="Admin" asp-controller="Admin" asp-action="Index" class="btn btn-secondary">← Listeye Dön</a>
                 </div>
 
                 <div class="row">
@@ -83,7 +83,7 @@
                             </div>
 
                             <button type="submit" class="btn btn-warning mt-3">Değişiklikleri Kaydet</button>
-                            <a href="/Admin/Admin/Index" class="btn btn-outline-secondary ms-2">Cancel</a>
+                            <a asp-area="Admin" asp-controller="Admin" asp-action="Index" class="btn btn-outline-secondary ms-2">Cancel</a>
                         </form>
                     </div>
                 </div>

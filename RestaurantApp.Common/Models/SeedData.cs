@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
@@ -18,7 +18,7 @@ namespace RestaurantApp.Common.Models
 
             var roleManager = serviceProvider.GetRequiredService<RoleManager<IdentityRole>>();
 
-            string[] roleNames = { "Admin", "User", "Garson" };
+            string[] roleNames = { "Admin", "User", "Waiter" };
 
             foreach (var roleName in roleNames)
             {
@@ -67,22 +67,22 @@ namespace RestaurantApp.Common.Models
                 }
             }
 
-            // Garson Kullanıcısı
-            string garsonEmail = "garson@domain.com";
-            if (await userManager.FindByEmailAsync(garsonEmail) == null)
+            // Waiter Kullanıcısı
+            string waiterEmail = "waiter@domain.com";
+            if (await userManager.FindByEmailAsync(waiterEmail) == null)
             {
-                var garsonUser = new ApplicationUser
+                var waiterUser = new ApplicationUser
                 {
-                    UserName=garsonEmail,
-                    Email=garsonEmail,
+                    UserName=waiterEmail,
+                    Email=waiterEmail,
                     EmailConfirmed=true
                 };
 
-                var result = await userManager.CreateAsync(garsonUser, "Garson123!");
+                var result = await userManager.CreateAsync(waiterUser, "Waiter123!");
 
                 if (result.Succeeded)
                 {
-                    await userManager.AddToRoleAsync(garsonUser, "Garson");
+                    await userManager.AddToRoleAsync(waiterUser, "Waiter");
                 }
             }
         }
