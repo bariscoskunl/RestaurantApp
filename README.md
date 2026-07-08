@@ -140,6 +140,20 @@ Günlük, haftalık ve aylık periyotlarla sistemdeki tüm satışların listele
 
 ---
 
+### 1️⃣1️⃣ Garson (Waiter) Mobil POS Arayüzü
+
+Garsonların mobil cihazlarından masalara hızlı sipariş girmesi için tasarlanmış özel arayüz (Mobile First).
+
+| Masa Seçimi | Ürün Ekleme | Sepet Görünümü |
+| :---: | :---: | :---: |
+| ![Masa Seçimi](screenshots/18.png) | ![Ürün Ekleme](screenshots/20.png) | ![Sepet](screenshots/19.png) |
+
+> **18.png:** Waiter rolüyle girildiğinde aktif veya boş masaları görüntüleyip sipariş açmak için kullanılan masa seçim ekranı.  
+> **20.png:** Seçili masaya ait siparişlerin girildiği kategori ve ürün ekleme alanı.  
+> **19.png:** Masaya eklenen ürünlerin sipariş onayından önce kontrol edildiği sepet ekranı.
+
+---
+
 ## 🛠️ Teknik Mimari
 
 Proje, **Separation of Concerns (Sorumlulukların Ayrılması)** ilkesine uygun olarak 4 temel katman üzerine kurgulanmıştır:
