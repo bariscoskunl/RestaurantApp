@@ -1,4 +1,4 @@
-﻿using RestaurantApp.Common.Models;
+using RestaurantApp.Common.Models;
 
 namespace RestaurantApp.Web.Models
 {
@@ -6,6 +6,7 @@ namespace RestaurantApp.Web.Models
     {
         public string ReportTitle { get; set; }
         public DateTime ReportDate { get; set; }
+        public string DateRangeText { get; set; }
         public List<Sale> Sales { get; set; }
     }
 }

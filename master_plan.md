@@ -1,228 +1,337 @@
-# Kapsamlı Restoran Sistemi Master Rehberi (Tek QR Kod & Dolu Masa Korumalı)
+# Restoran Sistemi Master Plan
 
-Bu doküman, sistemin uçtan uca çalışması için gereken Controller'ların yanı sıra **Hangi View (Arayüz) dosyalarının GÜNCELLENMESİ veya SIFIRDAN OLUŞTURULMASI gerektiğini ve içlerinde tam olarak ne olması gerektiğini** barındıran en detaylı rehberdir.
+## AŞAMA 1: HESAP KAPATMA & SATIŞ YANSITMA REVİZELERİ (KRİTİK)
 
-> [!WARNING]
-> **Önemli Not:** Müşteri menüye girdiğinde sadece **BOŞ** masaları seçecek, ödeme yaptıktan sonra masa **DOLU** durumuna geçecek ve başka kimse o masaya sipariş veremeyecektir. Müşterinin tekrar sipariş verebilmesi için Admin veya Garson'un o masanın hesabını kapatıp masayı tekrar "Boş" statüsüne alması gerekmektedir.
+### 1.1. Problem Analizi
 
----
+Şu an `CloseTable` action'ı sadece siparişleri `Completed` yapıp masayı `Empty` konumuna getiriyor. Ancak:
 
-## 0. Geriye Dönük Eklemeler (Eksik Kalan View ve Kodlar)
+> [!CAUTION]
+> **Hesap kapatıldığında satış (`Sale`) tablosuna hiçbir kayıt atılmıyor!** Bu nedenle:
+> - Günlük/Haftalık/Aylık raporlarda hiçbir veri görünmüyor
+> - `ReportController` tamamen boş sonuç döndürüyor
+> - Gelir takibi yapılamıyor
 
-Bu bölüm, önceki aşamalarda (Aşama 1 ve 2) yazılmış olan Controller'ların tam olarak çalışabilmesi için **MUTLAKA GÜNCELLENMESİ (veya eksikse oluşturulması) gereken View (Arayüz)** dosyalarını ve ufak kod eklemelerini listeler. Lütfen mevcut projenizdeki dosyalarla karşılaştırarak ilerleyin.
+### 1.2. CloseTable Action'ına Satış Kaydı Eklenmesi
 
-### 0.1. Geriye Dönük View İhtiyaçları (Admin/TableController İçin)
+**[GÜNCELLENECEK]** `Areas/Admin/Controllers/TableController.cs` → `CloseTable` metodu
 
-`RestaurantApp.Web/Areas/Admin/Views/Table/` klasörü altındaki **mevcut dosyaları aşağıdaki kurallara göre GÜNCELLEMELİSİNİZ**:
+Mevcut `CloseTable` metodu aşağıdaki adımları yapmalıdır:
 
-1. **[GÜNCELLENECEK] `Index.cshtml`:**
-   - **Mevcut Durum:** Hali hazırda projenizde bu dosya bulunmaktadır.
-   - **Yapılacak Güncelleme:** Tüm masaların (Dolu/Boş) listelendiği ana sayfada, bir HTML `<table>` içinde `TableNumber` ve `Status` sütunlarının doğru gösterildiğinden emin olun.
-   - **Yetki Farkı (Kritik):** Bu View'da `@if(User.IsInRole("Admin"))` bloğu kullanılarak "Yeni Masa Ekle", "Masayı Sil", "Hesabı Kapat" gibi yetki gerektiren eylem butonları **sadece Admin'e gösterilecek şekilde gizlenmelidir**. Sisteme giriş yapan **Garsonlar sadece "Detay" ve "Sipariş Gir" butonlarını görebilmelidir**. (Bu yetki kısıtlaması arayüzde kafa karışıklığını ve hatalı işlemleri önleyecektir).
-
-2. **[GÜNCELLENECEK] `Create.cshtml`:**
-   - **Mevcut Durum:** Hali hazırda projenizde bulunmaktadır.
-   - **Yapılacak Güncelleme:** Mevcut sayfa eğer herkese açıksa, sadece Admin'in görebileceği şekilde (örneğin Layout menülerinden gizlenerek veya doğrudan yetki kontrolüyle) düzenlenmeli. İçinde `<input name="tableNumber">` ve `<button type="submit">Kaydet</button>` barındıran basit bir form standart UI/UX kurallarına uygun hale getirilmelidir.
-
-3. **[GÜNCELLENECEK] `Details.cshtml`:**
-   - **Mevcut Durum:** Hali hazırda projenizde bulunmaktadır.
-   - **Yapılacak Güncelleme:** İlgili masaya ait verilmiş siparişlerin (`Order` ve `OrderItem` listesinin) gösterildiği, masanın adisyon / fiş sayfası olacak şekilde güncellenmelidir. Toplam tutarın dinamik olarak hesaplandığı ve Admin'in tıklayabileceği "Hesabı Kapat" butonunun bulunduğu alan mutlaka bu sayfada yer almalıdır.
-
-### 0.2. Geriye Dönük Kod İhtiyaçları (Repository)
-
-Müşteriye sadece "Boş" masaları listeleyebilmek için mevcut `TableRepository` dosyanıza şu sorguyu eklemelisiniz.
-
-- **`ITableRepository.cs` (Interface) İçine Eklenecek:** 
-  ```csharp
-  Task<IEnumerable<Table>> GetEmptyTablesAsync();
-  ```
-- **`TableRepository.cs` (Sınıf) İçine Eklenecek:**
-  ```csharp
-  public async Task<IEnumerable<Table>> GetEmptyTablesAsync()
-  {
-      return await _context.Tables
-          .Where(t => t.Status == RestaurantApp.Common.Enums.TableStatus.Empty)
-          .ToListAsync();
-  }
-  ```
-
----
-
-## AŞAMA 1: MÜŞTERİ KİMLİK DOĞRULAMA (ONBOARDING)
-
-### 1.1. Google ile Hızlı Giriş (OAuth 2.0)
-
-Müşterilerin hızlı sipariş verebilmesi için Google ile giriş altyapısı kurulmalıdır:
-
-1. `dotnet add package Microsoft.AspNetCore.Authentication.Google` paketini kurun.
-2. **appsettings.json:** `Authentication:Google:ClientId` ve `ClientSecret` tanımlamalarını ekleyin.
-3. **Program.cs:** Servis yapılandırmasına `.AddGoogle(options => ...)` ekleyin.
-4. **AccountController.cs (Backend):** `GoogleLogin` ve `GoogleResponse` Controller aksiyonlarını ekleyin.
-
-> **[MEVCUT DOSYA GÜNCELLEMESİ] `RestaurantApp.Web/Views/Account/Login.cshtml`:**
-> - **İçerik:** Standart E-Posta/Şifre giriş formunuzun altına Google ile giriş butonunu eklemelisiniz.
-> ```html
-> <!-- Login.cshtml içine eklenecek buton -->
-> <hr class="mt-4 mb-4" />
-> <a href="@Url.Action("GoogleLogin", "Account")" class="btn btn-outline-danger w-100 p-2 shadow-sm">
->     <i class="fa fa-google"></i> Google ile Giriş Yap
-> </a>
-> ```
-
-### 1.2. E-posta ile Doğrulama (Manuel Kayıt)
-
-1. `dotnet add package MailKit` paketini kurun.
-2. **appsettings.json:** `EmailSettings` bloğu (SmtpServer, Port, Email, Password) oluşturun.
-3. **IEmailService & EmailService:** SMTP mail gönderimi için bir servis sınıfı yazın ve DI (Dependency Injection) olarak ekleyin.
-4. **AccountController (Register & ConfirmEmail):**
-   - Kayıt olan kullanıcının `EmailConfirmed` değeri başlangıçta `false` yapılır.
-   - Mail başarıyla gönderildikten sonra kullanıcı `EmailVerificationSent` sayfasına yönlendirilir.
-
-> **[MEVCUT DOSYA KONTROLÜ] `RestaurantApp.Web/Views/Account/Register.cshtml`:**
-> - **İçerik:** Ad, E-Posta ve Şifre alanlarının olduğu standart kayıt formu. (Mevcut projenizdeki bu dosyayı kontrol edin, eksikse doldurun).
-
-> **[YENİ DOSYA OLUŞTURULACAK] `RestaurantApp.Web/Views/Account/EmailVerificationSent.cshtml`:**
-> - **İçerik:** Kullanıcı kayıt olduktan sonra onu karşılayan "Lütfen e-postanızı kontrol edin" mesajı.
-> ```html
-> <div class="text-center mt-5">
->     <h2 class="text-success"><i class="fa fa-envelope"></i> E-Posta Gönderildi</h2>
->     <p>Giriş yapabilmek için e-posta adresinize gönderilen linke tıklayarak hesabınızı doğrulayın.</p>
->     <a href="@Url.Action("Login", "Account")" class="btn btn-primary mt-3">Giriş Yap</a>
-> </div>
-> ```
-
----
-
-## AŞAMA 2: GARSON (WAITER) OPERASYONLARI
-
-### 2.1. Admin TableController (Sadece Okuma Koruması)
-
-Table işlemlerinde Garsonların yetkilerini kısıtlamak güvenlik için çok önemlidir:
+1. Masadaki tüm aktif siparişleri (`Preparing` veya `Served`) topla
+2. Tüm `OrderItem`'ları birleştirerek bir `Sale` nesnesi oluştur
+3. Her `OrderItem` için bir `SaleProducts` kaydı oluştur
+4. `Sale` ve `SaleProducts` kayıtlarını veritabanına yaz
+5. Siparişleri `Completed` olarak işaretle
+6. Masayı `Empty` statüsüne çek
 
 ```csharp
-[Area("Admin")]
-[Authorize(Roles = "Admin, Garson")] // Garsonlar sadece Index ve Details okuyabilir
-public class TableController : Controller
+[HttpPost, Authorize(Roles = "Admin")]
+[ValidateAntiForgeryToken]
+public async Task<IActionResult> CloseTable(int id)
 {
-    [HttpGet] public async Task<IActionResult> Index() { ... }
-    [HttpGet] public async Task<IActionResult> Details(int id) { ... }
+    var table = await _tableRepository.GetTableByIdAsync(id);
+    if (table == null) return NotFound();
 
-    // SADECE ADMIN İŞLEMLERİ (ÖNEMLİ):
-    [HttpPost, Authorize(Roles = "Admin")]
-    public async Task<IActionResult> Create(string tableNumber) { ... }
+    // 1. Aktif siparişleri al
+    var orders = await _orderRepository.GetOrdersByTableIdAsync(id);
+    var activeOrders = orders
+        .Where(o => o.Status != OrderStatus.Completed && o.Status != OrderStatus.Cancelled)
+        .ToList();
 
-    [HttpPost, Authorize(Roles = "Admin")]
-    public async Task<IActionResult> CloseTable(int id) { ... }
-    
-    [HttpPost, Authorize(Roles = "Admin")]
-    public async Task<IActionResult> Delete(int id) { ... }
-}
-```
-
-### 2.2. Garson Sipariş Ekranı (WaiterController)
-
-Garson "Sipariş Gir" butonuna bastığında açılacak, müşterinin sipariş vermesine gerek kalmadan garsonun adisyon açtığı sayfa.
-
-```csharp
-[Authorize(Roles = "Garson, Admin")]
-public class WaiterController : Controller
-{
-    [HttpGet("Waiter/WaiterOrder")]
-    public async Task<IActionResult> WaiterOrder(int tableId)
+    if (activeOrders.Any())
     {
-        ViewBag.TableId = tableId;
-        return View(await _productRepo.GetAllProductsAsync());
+        // 2. Tüm sipariş kalemlerini topla
+        var allItems = activeOrders.SelectMany(o => o.OrderItems).ToList();
+        var totalPrice = allItems.Sum(oi => oi.UnitPrice * oi.Quantity);
+
+        // 3. Sale kaydı oluştur
+        var sale = new Sale
+        {
+            SaleDate = DateTime.Now,
+            TotalPrice = totalPrice,
+            TableNumber = int.TryParse(table.TableNumber, out var tn) ? tn : (int?)null
+        };
+        await _saleRepository.AddSaleAsync(sale);
+
+        // 4. Her sipariş kalemi için SaleProducts kaydı oluştur
+        foreach (var item in allItems)
+        {
+            var saleProduct = new SaleProducts
+            {
+                SaleId = sale.Id,
+                ProductId = item.ProductId,
+                Quantity = item.Quantity,
+                ProductPrice = item.UnitPrice,
+                ProductTotalPrice = item.UnitPrice * item.Quantity
+            };
+            await _saleRepository.AddSaleProductAsync(saleProduct);
+        }
+
+        // 5. Siparişleri Completed yap
+        foreach (var order in activeOrders)
+        {
+            await _orderRepository.UpdateOrderStatusAsync(order.Id, OrderStatus.Completed);
+        }
     }
+
+    // 6. Masayı boşalt
+    await _tableRepository.UpdateTableStatusAsync(id, TableStatus.Empty);
+
+    return RedirectToAction(nameof(Index));
 }
 ```
 
-> **[YENİ DOSYA OLUŞTURULACAK] `RestaurantApp.Web/Views/Waiter/WaiterOrder.cshtml`:**
-> - **İçerik:** Garsonun masaya özel ürün seçtiği sayfa. Seçilen ürünlerin JavaScript ile frontend sepetine atıldığı ve `api/waiter/place-order` endpoint'ine JSON objesi olarak gönderildiği ekran.
-> - **Önemli Detay:** Sipariş başarıyla veritabanına kaydedildikten sonra Javascript ile Garsonu `window.location.href = "/Admin/Table/Details/" + tableId;` koduyla masanın adisyon (Details) sayfasına geri döndürmelidir.
+> [!IMPORTANT]
+> **Dependency Injection:** `TableController`'a `ISaleRepository _saleRepository` inject edilmesi gerekmektedir. Constructor'a eklenmeli.
+
+### 1.3. UpdateStatus Action'ındaki "Boş" Geçişi Düzeltmesi
+
+**[GÜNCELLENECEK]** `TableController.cs` → `UpdateStatus` metodu
+
+Şu an `UpdateStatus` ile masa "Boş"a alındığında da siparişler sadece `Completed` yapılıyor ama `Sale` kaydı oluşturulmuyor. Bu durum veri kaybına sebep olabilir.
+
+**İki seçenek:**
+- **Seçenek A (Önerilen):** "Boş"a alınırken de `CloseTable` ile aynı satış kaydı mantığı çalıştırılır (kod tekrarını önlemek için private bir metoda çıkarılır).
+- **Seçenek B:** "Boş"a alma sadece `CloseTable` üzerinden yapılabilir, `UpdateStatus`'ta "Boş" seçeneği devre dışı bırakılır.
+
+```csharp
+// Ortak satış kaydı mantığı private metoda çıkarılır:
+private async Task CreateSaleFromActiveOrders(int tableId)
+{
+    // CloseTable'daki satış kaydı mantığının aynısı buraya taşınır
+    // Hem CloseTable hem UpdateStatus(Empty) bu metodu çağırır
+}
+```
+
+### 1.4. "Hesap Bekliyor" (WaitingForBill) Durumu İyileştirmeleri
+
+**[GÜNCELLENECEK]** `Table/Details.cshtml` & `TableController.cs`
+
+Şu an "Hesap Bekliyor" durumu sadece görsel bir badge olarak duruyor, fonksiyonel bir işlevi yok. Aşağıdaki iyileştirmeler yapılmalıdır:
+
+1. **Müşteriden Hesap Talebi:** Müşteri kendi `Home/Index` arayüzünden "Hesap İste" butonuna basabilmeli. Bu buton masanın durumunu `WaitingForBill` yapmalı.
+   - `HomeController`'a bir `RequestBill` action eklenmeli
+   - Müşterinin aktif siparişi olan masasını `WaitingForBill` statüsüne çekmeli
+
+2. **Admin/Garson Bilgilendirme:** `Table/Index.cshtml`'de "Hesap Bekliyor" durumundaki masalar sarı renkte zaten görünüyor. Ek olarak:
+   - "Hesap Bekliyor" masalarını üstte veya ayrı bir bölümde göstermek (öncelik sıralaması)
+   - Opsiyonel: Sesli/görsel bildirim (tarayıcı notification)
+
+3. **"Hesap Bekliyor" → Hesap Kapatma Akışı:** "Hesap Bekliyor" durumundaki bir masada "Hesabı Kapat" butonuna basıldığında, satış kaydı oluşturulmalı (1.2'deki mantık).
+
+### 1.5. Sipariş Durumu Güncellemesi (Preparing → Served)
+
+**[GÜNCELLENECEK]** `Table/Details.cshtml` & `TableController.cs`
+
+Şu an sipariş durumu (`Preparing`, `Served`) değiştirme mekanizması Details sayfasında yok. Eklenmesi gereken:
+
+1. Her siparişin yanında "Servis Edildi" butonu olmalı
+2. Bu buton siparişin `Status`'unu `Preparing` → `Served` olarak güncellemeli
+3. `TableController`'a `UpdateOrderStatus` action eklenmeli
+
+```csharp
+[HttpPost]
+[ValidateAntiForgeryToken]
+public async Task<IActionResult> UpdateOrderStatus(int orderId, OrderStatus status, int tableId)
+{
+    await _orderRepository.UpdateOrderStatusAsync(orderId, status);
+    return RedirectToAction(nameof(Details), new { id = tableId });
+}
+```
 
 ---
 
-## AŞAMA 3: MÜŞTERİ SİPARİŞ AKIŞI (TEK MENÜ & DOLU MASA KORUMASI)
+## AŞAMA 2: MÜŞTERİ SİPARİŞ AKIŞI İYİLEŞTİRMELERİ
 
-### 3.1. Genel Menü Ekranı (MenuController)
+### 2.1. Home/Index Müşteri Deneyimi
+
+> [!NOTE]
+> Müşterinin web sitesine girdiğinde gördüğü ekran `Home/Index`'tir. Ayrı bir `MenuController` veya genel menü ekranı **gerekli değildir**. Mevcut `Home/Index` bu işlevi zaten karşılamaktadır.
+
+Mevcut `Home/Index` arayüzünde kontrol edilmesi gerekenler:
+
+1. **Masa Seçimi:** Müşteri sipariş verirken boş masalardan seçim yapabiliyor mu? (JavaScript tarafında `GetEmptyTablesAsync` kullanılarak boş masalar dropdown'da listelenmeli)
+2. **Sepet Özeti:** Sepet içeriğinin görsel olarak gösterilmesi (sidebar veya alt panel)
+3. **"Hesap İste" Butonu:** Giriş yapmış ve aktif siparişi olan müşteri için görünür olmalı
+
+### 2.2. Müşterinin Aktif Siparişlerini Görüntüleme
+
+**[KONTROL EDİLECEK]** `HomeController.cs` → `GetTodaySales(userId)`
+
+Bu endpoint mevcut ancak müşterinin **kendi aktif siparişlerini** (masasındaki tüm siparişleri) doğru gösterip göstermediği kontrol edilmeli. Arayüzde "Siparişlerim" bölümü düzgün çalışmalı.
+
+---
+
+## AŞAMA 3: GÜVENLİK (RATE LIMITING VE BLACKLIST)
+
+### 3.1. Rate Limiting (.NET Built-in)
+
+Spam siparişleri önlemek için yerleşik Rate Limiting kullanımı:
+
+**[YENİ EKLENECEK]** `Program.cs`
 
 ```csharp
-public class MenuController : Controller
+// Program.cs'e eklenecek servis yapılandırması:
+builder.Services.AddRateLimiter(options =>
 {
-    private readonly IProductRepository _productRepo;
-    private readonly ITableRepository _tableRepo;
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: partition => new FixedWindowRateLimiterOptions
+            {
+                AutoReplenishment = true,
+                PermitLimit = 100,
+                QueueLimit = 0,
+                Window = TimeSpan.FromMinutes(1)
+            }));
 
-    public MenuController(IProductRepository p, ITableRepository t) 
-    { 
-        _productRepo = p; 
-        _tableRepo = t; 
-    }
-
-    [HttpGet]
-    public async Task<IActionResult> Index()
+    options.AddFixedWindowLimiter("OrderLimitPolicy", opt =>
     {
-        // View'a sadece BOŞ masaları yolluyoruz (Geriye dönük eklediğimiz metodu kullanıyoruz)
-        ViewBag.EmptyTables = await _tableRepo.GetEmptyTablesAsync();
-        return View(await _productRepo.GetAllProductsAsync());
-    }
-}
+        opt.PermitLimit = 3;
+        opt.Window = TimeSpan.FromMinutes(1);
+        opt.QueueLimit = 0;
+    });
+
+    options.RejectionStatusCode = 429;
+});
 ```
 
-> **[YENİ DOSYA OLUŞTURULACAK] `RestaurantApp.Web/Views/Menu/Index.cshtml`:**
-> - **İçerik:** Müşterinin web sitesine girdiğinde göreceği genel Menü ekranı. 
-> - **Gerekli Alanlar:** 
->   1. Ürünlerin listelendiği kartlar (Resim, İsim, Fiyat) ve "Sepete Ekle" butonları.
->   2. Ekranın sağında veya altında "Sepetim" sepet içeriğinin özeti.
->   3. **Masa Seçimi (Kritik):** `<select>` elementi kullanılarak `ViewBag.EmptyTables` içerisinden sadece BOŞ masaların listelendiği bir Dropdown menü.
->   4. Kredi Kartı bilgilerinin girileceği form alanları.
->   5. "Ödeme Yap ve Siparişi Tamamla" butonu. (Bu buton tıklandığında içindeki JS kodu verileri toplayıp `api/customer/place-order` endpoint'ine atacak ve başarı durumunda sepeti boşaltacaktır).
+**[GÜNCELLENECEK]** Sipariş endpoint'lerine `[EnableRateLimiting("OrderLimitPolicy")]` attribute'u eklenmeli:
+- `HomeController.SaveOrder`
+- `WaiterController.PlaceOrder`
 
-### 3.2. Iyzico ve Sipariş API'si (CustomerOrderController)
+**[GÜNCELLENECEK]** `Program.cs` pipeline'ına eklenmeli:
+```csharp
+app.UseRateLimiter(); // UseRouting'den sonra
+```
 
-Ödemeyi yönetmek ve siparişi finalize etmek için güvenli API Controller:
-**Kurulum:** `dotnet add package iyzipay`
+### 3.2. IP Blacklist (Kara Liste Middleware)
+
+Kötü niyetli kullanıcıları sistemden engellemek için:
+
+**[YENİ OLUŞTURULACAK]** `Middlewares/BlacklistMiddleware.cs`
+
+- Veritabanından veya `MemoryCache`'den IP adreslerini kontrol eden middleware
+- Eşleşme varsa `403 Forbidden` döndürür
+- Admin panelinden IP ekleme/çıkarma arayüzü (opsiyonel)
+
+**[GÜNCELLENECEK]** `Program.cs`'de middleware'i aktif etme:
+```csharp
+app.UseMiddleware<BlacklistMiddleware>();
+```
+
+---
+
+## AŞAMA 4: ÖDEME SİSTEMİ ENTEGRASYONU (Iyzico)
+
+### 4.1. Iyzico Entegrasyonu
+
+**[YENİ EKLENECEK]** Ödeme altyapısı
+
+1. `dotnet add package iyzipay` paketini kurun
+2. `appsettings.json`'a Iyzico API anahtarlarını ekleyin:
+   ```json
+   "Iyzico": {
+     "ApiKey": "...",
+     "SecretKey": "...",
+     "BaseUrl": "https://sandbox-api.iyzipay.com"
+   }
+   ```
+3. **IPaymentService & PaymentService:** Ödeme işlemi servisi yazılacak
+4. DI'a `IPaymentService` kayıt edilecek
+
+### 4.2. Müşteri Ödeme Akışı (CustomerOrderController)
+
+**[YENİ OLUŞTURULACAK]** `Controllers/CustomerOrderController.cs` (API Controller)
 
 ```csharp
 [Route("api/customer")]
 [ApiController]
 public class CustomerOrderController : ControllerBase
 {
-    // Inject _payment, _order, _table servisleri buraya gelir...
-
     [HttpPost("place-order")]
     public async Task<IActionResult> PlaceOrderWithPayment([FromBody] PaymentDto req)
     {
-        // 1. ÇİFTE KONTROL: MASA HALA BOŞ MU? (Aynı anda 2 kişi aynı masaya tıklamasın)
-        var table = await _table.GetTableByIdAsync(req.TableId);
-        if (table.Status != RestaurantApp.Common.Enums.TableStatus.Empty)
-            return BadRequest(new { message = "Bu masa şu anda dolu! Başka bir masa seçin." });
-
-        // 2. Iyzico Ödemesi (Senkronizasyon)
-        var payRes = await _payment.ProcessPaymentAsync(new PaymentRequestDto { /* Kart bilgileri ve Sepet Tutarı */ });
-        if(!payRes.IsSuccess) return BadRequest(new { message = "Ödeme Reddedildi! Lütfen kart bilgilerinizi kontrol edin." });
-        
-        // 3. Siparişi Kaydet ve MASAYI DOLU YAP
-        var order = new Order { TableId = req.TableId, Status = OrderStatus.Preparing /* Sepet ürünleri ile maplenecek */ };
-        await _order.CreateOrderAsync(order);
-        
-        // Müşteri başarılı şekilde ödediyse masa artık DOLU:
-        await _table.UpdateTableStatusAsync(table.Id, RestaurantApp.Common.Enums.TableStatus.Occupied);
-        
-        return Ok(new { message = "Ödemeniz alındı, siparişiniz hazırlanıyor!" });
+        // 1. Masa hala boş mu? (Çifte kontrol)
+        // 2. Iyzico ödeme işlemi
+        // 3. Siparişi kaydet
+        // 4. Masayı DOLU yap
+        // 5. Sonuç dön
     }
 }
 ```
 
+> [!WARNING]
+> Bu aşama, Iyzico'dan gerçek API anahtarları alındıktan sonra uygulanacaktır. Sandbox ortamında test edilmelidir.
+
 ---
 
-## AŞAMA 4: GÜVENLİK (RATE LIMITING VE BLACKLIST)
+## AŞAMA 5: QR KOD SİSTEMİ (EN SON YAPILACAK)
 
-### 4.1. Rate Limiting (.NET Built-in)
-Spam siparişleri önlemek için yerleşik Rate Limiting kullanımı:
-- **Program.cs** içerisine `builder.Services.AddRateLimiter(...)` eklenip global ve "OrderLimitPolicy" (örneğin 1 dakikada maks 3 sipariş) konfigürasyonu oluşturulacak.
-- Sipariş metodunun (API) tepesine `[EnableRateLimiting("OrderLimitPolicy")]` eklenecek.
+> [!IMPORTANT]
+> QR Kod sistemi, tüm yukarıdaki aşamalar tamamlandıktan sonra **en son** aşamada eklenecektir. Diğer aşamalar stabil çalışmadan QR koda geçilmemelidir.
 
-### 4.2. IP Blacklist (Kara Liste Middleware)
-Kötü niyetli kullanıcıları sistemden engellemek için:
-- `Middlewares/BlacklistMiddleware.cs` adında bir sınıf açılıp, veritabanından veya MemoryCache'den IP'lerin kontrol edildiği ve eşleşme varsa `403 Forbidden` veya `429 Too Many Requests` dönen bir ara katman (Middleware) yazılacak.
-- **Program.cs**'de `app.UseMiddleware<BlacklistMiddleware>();` ile sisteme dahil edilecek.
+### 5.1. QR Kod Oluşturma (Her Masa İçin)
+
+**Paket:** `dotnet add package QRCoder`
+
+Her masanın kendine özel bir URL'i olacak ve bu URL bir QR koda dönüştürülecek.
+
+1. **QR URL Formatı:** `https://domain.com/Home/Index?tableId={masaId}`
+2. **Admin Panelinden QR Yazdırma:** `Table/Index.cshtml`'de her masa kartının yanında "QR Kodu İndir" butonu
+3. **QR Kod Üretme Action'ı:**
+
+```csharp
+// TableController'a eklenecek
+[HttpGet]
+public IActionResult GenerateQrCode(int id)
+{
+    var url = $"{Request.Scheme}://{Request.Host}/Home/Index?tableId={id}";
+    
+    using var qrGenerator = new QRCodeGenerator();
+    var qrCodeData = qrGenerator.CreateQrCode(url, QRCodeGenerator.ECCLevel.Q);
+    using var qrCode = new PngByteQRCode(qrCodeData);
+    var qrCodeBytes = qrCode.GetGraphic(20);
+    
+    return File(qrCodeBytes, "image/png", $"Masa_{id}_QR.png");
+}
+```
+
+### 5.2. QR Kod ile Müşteri Akışı
+
+Müşteri QR kodu okuttuğunda:
+1. `Home/Index?tableId=X` sayfasına yönlendirilir
+2. Masa otomatik olarak seçili gelir (dropdown'da o masa seçilmiş)
+3. Müşteri giriş yapmamışsa → Giriş/Kayıt sayfasına yönlendirilir
+4. Giriş yaptıktan sonra otomatik olarak seçili masa ile menü sayfasına döner
+
+**[GÜNCELLENECEK]** `HomeController.Index` → `tableId` query parametresini kabul etmeli:
+```csharp
+public async Task<IActionResult> Index(int? tableId)
+{
+    // tableId varsa ViewBag.SelectedTableId = tableId ile view'a gönder
+    // View'da masa dropdown'ı bu değerle önceden seçili gelsin
+}
+```
+
+### 5.3. QR Kod Güvenlik Kuralları
+
+- QR ile gelen müşteri **sadece o masaya** sipariş verebilmeli
+- Masa zaten **dolu** ise müşteriye uyarı gösterilmeli
+- Müşterinin aktif siparişi varsa, mevcut masasına yönlendirilmeli (başka masa seçememeli)
+
+---
+
+## ÖNCELİK SIRASI VE YÜRÜTME PLANI
+
+| Sıra | Aşama | Öncelik | Tahmini Süre |
+|------|-------|---------|-------------|
+| 1️⃣ | **Hesap Kapatma & Satış Yansıtma** | 🔴 Kritik | Orta |
+| 2️⃣ | **Müşteri Sipariş Akışı İyileştirmeleri** | 🟡 Önemli | Düşük |
+| 3️⃣ | **Güvenlik (Rate Limiting & Blacklist)** | 🟡 Önemli | Orta |
+| 4️⃣ | **Ödeme Sistemi (Iyzico)** | 🟠 Bağımlı | Yüksek |
+| 5️⃣ | **QR Kod Sistemi** | 🔵 En Son | Orta |
+
+> [!TIP]
+> **Hemen başlanması gereken:** Aşama 1 (Hesap Kapatma & Satış Yansıtma). Bu olmadan raporlama sistemi tamamen işlevsiz kalmaktadır.

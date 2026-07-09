@@ -30,6 +30,7 @@ namespace RestaurantApp.Web.Areas.Admin.Controllers
             {
                 ReportTitle = "Daily Sales Report",
                 ReportDate = DateTime.Today,
+                DateRangeText = DateTime.Today.ToShortDateString(),
                 Sales = sales.ToList()
             };
             return View("Report", viewModel);
@@ -38,10 +39,12 @@ namespace RestaurantApp.Web.Areas.Admin.Controllers
         public async Task<IActionResult> WeeklyReport()
         {
             var sales = await _saleRepository.GetWeeklySalesAsync();
+            var startOfWeek = DateTime.Today.AddDays(-((int)DateTime.Today.DayOfWeek));
             var viewModel = new ReportViewModel
             {
                 ReportTitle = "Weekly Sales Report",
                 ReportDate = DateTime.Today,
+                DateRangeText = $"{startOfWeek.ToShortDateString()} - {DateTime.Today.ToShortDateString()}",
                 Sales = sales.ToList()
             };
             return View("Report", viewModel);
@@ -50,10 +53,12 @@ namespace RestaurantApp.Web.Areas.Admin.Controllers
         public async Task<IActionResult> MonthlyReport()
         {
             var sales = await _saleRepository.GetMonthlySalesAsync();
+            var startOfMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
             var viewModel = new ReportViewModel
             {
                 ReportTitle = "Monthly Sales Report",
                 ReportDate = DateTime.Today,
+                DateRangeText = $"{startOfMonth.ToShortDateString()} - {DateTime.Today.ToShortDateString()}",
                 Sales = sales.ToList()
             };
             return View("Report", viewModel);

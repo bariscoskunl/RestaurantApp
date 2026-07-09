@@ -1,10 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using RestaurantApp.Common.Enums;
 using RestaurantApp.Common.Models;
 using RestaurantApp.Services.Interfaces;
-
-using Microsoft.AspNetCore.Identity;
+using RestaurantApp.Services.Repositories;
 
 namespace RestaurantApp.Web.Areas.Admin.Controllers
 {
@@ -16,17 +16,20 @@ namespace RestaurantApp.Web.Areas.Admin.Controllers
         private readonly IOrderRepository _orderRepository;
         private readonly IOrderItemRepository _orderItemRepository;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly ISaleRepository _saleRepository;
 
         public TableController(
             ITableRepository tableRepository,
             IOrderRepository orderRepository,
             IOrderItemRepository orderItemRepository,
-            UserManager<ApplicationUser> userManager)
+            UserManager<ApplicationUser> userManager,
+            ISaleRepository saleRepository)
         {
             _tableRepository = tableRepository;
             _orderRepository = orderRepository;
             _orderItemRepository = orderItemRepository;
             _userManager = userManager;
+            _saleRepository = saleRepository;
         }
 
         [HttpGet]
@@ -117,14 +120,7 @@ namespace RestaurantApp.Web.Areas.Admin.Controllers
             // Eğer masa 'Boş' statüsüne alınıyorsa, açık kalan siparişler de kapatılmalıdır!
             if (status == TableStatus.Empty)
             {
-                var orders = await _orderRepository.GetOrdersByTableIdAsync(id);
-                foreach (var order in orders)
-                {
-                    if (order.Status != OrderStatus.Completed && order.Status != OrderStatus.Cancelled)
-                    {
-                        await _orderRepository.UpdateOrderStatusAsync(order.Id, OrderStatus.Completed);
-                    }
-                }
+                await CreateSaleFromActiveOrders(id);
             }
 
             await _tableRepository.UpdateTableStatusAsync(id, status);
@@ -159,20 +155,16 @@ namespace RestaurantApp.Web.Areas.Admin.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CloseTable(int id)
         {
-            // Tüm aktif siparişleri Completed yap
-            var orders = await _orderRepository.GetOrdersByTableIdAsync(id);
-            foreach (var order in orders)
+            var table = await _tableRepository.GetTableByIdAsync(id);
+            if (table == null)
             {
-                if (order.Status != OrderStatus.Completed && order.Status != OrderStatus.Cancelled)
-                {
-                    await _orderRepository.UpdateOrderStatusAsync(order.Id, OrderStatus.Completed);
-                }
+                return NotFound();
             }
 
-            // Masayı boşalt
-            await _tableRepository.UpdateTableStatusAsync(id, TableStatus.Empty);
+            await CreateSaleFromActiveOrders(id);
 
-            return RedirectToAction(nameof(Index));
+            await _tableRepository.UpdateTableStatusAsync(id, TableStatus.Empty);
+            return RedirectToAction("Index");
         }
 
         [HttpPost, Authorize(Roles = "Admin")]
@@ -181,6 +173,63 @@ namespace RestaurantApp.Web.Areas.Admin.Controllers
         {
             await _tableRepository.DeleteTableAsync(id);
             return RedirectToAction(nameof(Index));
+        }
+
+        private async Task CreateSaleFromActiveOrders(int tableId)
+        {
+            var table = await _tableRepository.GetTableByIdAsync(tableId);
+            if (table == null) return;
+
+            var orders = await _orderRepository.GetOrdersByTableIdAsync(tableId);
+            var activeOrders = orders
+                .Where(o => o.Status != OrderStatus.Completed && o.Status != OrderStatus.Cancelled)
+                .ToList();
+
+            if (activeOrders.Any())
+            {
+                var allItems = activeOrders.SelectMany(o => o.OrderItems).ToList();
+                var totalPrice = allItems.Sum(oi => oi.UnitPrice * oi.Quantity);
+
+                var sale = new Sale
+                {
+                    SaleDate = DateTime.Now,
+                    TotalPrice = totalPrice,
+                    TableNumber = int.TryParse(table.TableNumber, out var tn) ? tn : (int?)null 
+                };
+                await _saleRepository.AddSaleAsync(sale);
+
+                // Get the UserId for the sale (first available WaiterId, or the current user)
+                var saleUserId = activeOrders.FirstOrDefault(o => !string.IsNullOrEmpty(o.WaiterId))?.WaiterId 
+                                 ?? _userManager.GetUserId(User) ?? string.Empty;
+
+                // Group items by ProductId to avoid composite key conflicts (SaleId, ProductId)
+                var groupedItems = allItems.GroupBy(i => i.ProductId).Select(g => new
+                {
+                    ProductId = g.Key,
+                    Quantity = g.Sum(i => i.Quantity),
+                    UnitPrice = g.First().UnitPrice,
+                    ProductTotalPrice = g.Sum(i => i.UnitPrice * i.Quantity)
+                });
+
+                foreach (var item in groupedItems)
+                {
+                    var saleProduct = new SaleProducts
+                    {
+                        SaleId = sale.Id,
+                        ProductId = item.ProductId,
+                        Quantity = item.Quantity,
+                        ProductPrice = item.UnitPrice,
+                        ProductTotalPrice = item.ProductTotalPrice,
+                        UserId = saleUserId
+                    };
+                    await _saleRepository.AddSaleProductAsync(saleProduct);
+                }
+
+                foreach (var order in activeOrders)
+                {
+                    await _orderRepository.UpdateOrderStatusAsync(order.Id, OrderStatus.Completed);
+                }
+            }
         }
     }
 }
