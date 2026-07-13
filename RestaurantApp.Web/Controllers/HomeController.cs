@@ -304,5 +304,31 @@ namespace RestaurantApp.Web.Controllers
             HttpContext.Session.Remove(CartSessionKey);
         }
 
+        [Authorize]
+        [HttpPost]
+        [IgnoreAntiforgeryToken]
+        public async Task<IActionResult> CallWaiter()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized(new { message = "Giriş yapmalısınız." });
+
+            // Müşterinin aktif siparişi var mı?
+            var activeOrder = await _orderRepository.GetActiveOrderByUserIdAsync(userId);
+            if (activeOrder == null)
+                return BadRequest(new { message = "Henüz siparişiniz yok. Önce sipariş vermelisiniz." });
+
+            var table = await _tableRepository.GetTableByIdAsync(activeOrder.TableId);
+            if (table == null)
+                return BadRequest(new { message = "Masa bulunamadı." });
+
+            // Zaten çağrılmışsa tekrar çağırmayı engelle
+            if (table.Status == TableStatus.WaiterRequested)
+                return Ok(new { message = "Garson zaten çağrıldı, lütfen bekleyiniz." });
+
+            await _tableRepository.UpdateTableStatusAsync(table.Id, TableStatus.WaiterRequested);
+            return Ok(new { success = true, message = "Garson çağrıldı! En kısa sürede masanıza gelecektir." });
+        }
+
     }
 }

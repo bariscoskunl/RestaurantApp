@@ -175,6 +175,21 @@ namespace RestaurantApp.Web.Areas.Admin.Controllers
             return RedirectToAction(nameof(Index));
         }
 
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AcknowledgeWaiterCall(int id)
+        {
+            var table = await _tableRepository.GetTableByIdAsync(id);
+            if (table == null) return NotFound();
+
+            if (table.Status == TableStatus.WaiterRequested)
+            {
+                await _tableRepository.UpdateTableStatusAsync(id, TableStatus.Occupied);
+            }
+
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
         private async Task CreateSaleFromActiveOrders(int tableId)
         {
             var table = await _tableRepository.GetTableByIdAsync(tableId);

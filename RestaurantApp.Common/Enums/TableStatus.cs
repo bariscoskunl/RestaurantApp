@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -11,5 +11,6 @@ namespace RestaurantApp.Common.Enums
         Empty = 0, // Boş
         Occupied = 1, // Dolu
         WaitingForBill = 2, // Hesap Bekliyor
+        WaiterRequested = 3, // Garson Çağrıldı
     }
 }

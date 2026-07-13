@@ -52,6 +52,15 @@
             background: linear-gradient(135deg, #fff3cd 0%, #ffeeba 100%);
             border: 2px solid #ffc107;
         }
+        .table-card.status-waiter-requested {
+            background: linear-gradient(135deg, #ffe0b2 0%, #ffcc80 100%);
+            border: 2px solid #ff9800;
+            animation: pulse-border 1.5s infinite;
+        }
+        @@keyframes pulse-border {
+            0%, 100% { box-shadow: 0 2px 8px rgba(255,152,0,0.3); }
+            50% { box-shadow: 0 2px 20px rgba(255,152,0,0.6); }
+        }
 
         .table-card .table-number {
             font-size: 1.5rem;
@@ -69,6 +78,7 @@
         .badge-empty { background-color: #28a745; color: #fff; }
         .badge-occupied { background-color: #dc3545; color: #fff; }
         .badge-waiting { background-color: #ffc107; color: #212529; }
+        .badge-waiter-requested { background-color: #ff9800; color: #fff; }
 
         /* Kart özet bilgileri */
         .card-summary {
@@ -159,27 +169,34 @@
                     var emptyCount = tableList.Count(t => t.Status == TableStatus.Empty);
                     var occupiedCount = tableList.Count(t => t.Status == TableStatus.Occupied);
                     var waitingCount = tableList.Count(t => t.Status == TableStatus.WaitingForBill);
+                    var waiterRequestedCount = tableList.Count(t => t.Status == TableStatus.WaiterRequested);
                 }
 
                 <!-- Özet Kartları -->
                 
                     <div class="row mb-3 g-2">
-                        <div class="col-4">
+                        <div class="col-3">
                             <div class="summary-card" style="background-color: #28a745;">
                                 <span class="count">@emptyCount</span>
                                 Boş
                             </div>
                         </div>
-                        <div class="col-4">
+                        <div class="col-3">
                             <div class="summary-card" style="background-color: #dc3545;">
                                 <span class="count">@occupiedCount</span>
                                 Dolu
                             </div>
                         </div>
-                        <div class="col-4">
+                        <div class="col-3">
                             <div class="summary-card" style="background-color: #ffc107; color: #212529;">
                                 <span class="count">@waitingCount</span>
                                 Hesap Bekliyor
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <div class="summary-card" style="background-color: #ff9800;">
+                                <span class="count">@waiterRequestedCount</span>
+                                🔔 Garson Bekliyor
                             </div>
                         </div>
                     </div>
@@ -197,6 +214,7 @@
                                 TableStatus.Empty => "status-empty",
                                 TableStatus.Occupied => "status-occupied",
                                 TableStatus.WaitingForBill => "status-waiting",
+                                TableStatus.WaiterRequested => "status-waiter-requested",
                                 _ => "status-empty"
                             };
                             var badgeClass = table.Status switch
@@ -204,6 +222,7 @@
                                 TableStatus.Empty => "badge-empty",
                                 TableStatus.Occupied => "badge-occupied",
                                 TableStatus.WaitingForBill => "badge-waiting",
+                                TableStatus.WaiterRequested => "badge-waiter-requested",
                                 _ => "badge-empty"
                             };
                             var statusText = table.Status switch
@@ -211,6 +230,7 @@
                                 TableStatus.Empty => "Boş",
                                 TableStatus.Occupied => "Dolu",
                                 TableStatus.WaitingForBill => "Hesap Bekliyor",
+                                TableStatus.WaiterRequested => "🔔 Garson Bekliyor",
                                 _ => "Bilinmiyor"
                             };
 
